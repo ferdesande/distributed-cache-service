@@ -8,10 +8,10 @@ assistants in the future to get a deep understanding on how the project evolved.
 | ID  | Story                                 | Status     | Description                                     |
 |-----|---------------------------------------|------------|-------------------------------------------------|
 | 001 | Setup Project                         | ✅ Done    | Initial project configuration and structure     |
-| 002 | ArchUnit Definition                   | 🏗️ Planned | Configure ArchUnit for architectural compliance |
+| 002 | ArchUnit Definition                   | ✅ Done    | Configure ArchUnit for architectural compliance |
 | 003 | Cache Repository Definition           | 🏗️ Planned | Define core cache repository interface          |
 | 004 | Configure Redis and Test Dependencies | 🏗️ Planned | Add Redis, TestContainers and integration tests |
-| 005 | Implement Cache Repository with Redis | 🏗️ Planned | Implement Redis-based cache repository          |
+| 005 | Implement Cache Repository with Redis | ⏸️ Blocked | Implement Redis-based cache repository          |
 
 ## Status Legend
 

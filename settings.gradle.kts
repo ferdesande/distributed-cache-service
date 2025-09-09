@@ -23,11 +23,12 @@ dependencyResolutionManagement {
             plugin("spring-dependency-management", "io.spring.dependency-management")
                 .versionRef("spring-dependency-management")
 
-            library("spring-boot-starter","org.springframework.boot", "spring-boot-starter").withoutVersion()
+            library("spring-boot-starter", "org.springframework.boot", "spring-boot-starter").withoutVersion()
             library("kotlin-reflect", "org.jetbrains.kotlin", "kotlin-reflect").withoutVersion()
             library("spring-boot-starter-test", "org.springframework.boot", "spring-boot-starter-test").withoutVersion()
             library("kotlin-test-junit5", "org.jetbrains.kotlin", "kotlin-test-junit5").withoutVersion()
             library("junit-platform-launcher", "org.junit.platform", "junit-platform-launcher").withoutVersion()
+            library("tngtech-archunit", "com.tngtech.archunit", "archunit-junit5").version("1.4.1")
         }
     }
 }

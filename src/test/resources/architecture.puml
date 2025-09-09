@@ -1,0 +1,43 @@
+@startuml
+!define BOUNDARY_COLOR #grey
+skinparam componentStyle uml2
+skinparam component {
+  BorderColor BOUNDARY_COLOR
+  BackgroundColor #white
+}
+
+package "Cache Service Architecture" {
+  [Base] <<com.fsg.cacheservice>> as base
+  [API] <<com.fsg.cacheservice.api..>> as api
+  [Core] <<com.fsg.cacheservice.core..>> as core
+  [Infrastructure] <<com.fsg.cacheservice.infrastructure..>> as infrastructure
+  [Configuration] <<com.fsg.cacheservice.configuration..>> as configuration
+}
+
+' Allowed dependencies
+api --> core : uses
+infrastructure --> core : implements
+configuration --> core : configures
+configuration --> infrastructure : wires
+base --> configuration : bootstrap
+base --> api : bootstrap
+
+' Forbidden dependencies (documented)
+core -[hidden]-> api
+core -[hidden]-> infrastructure
+core -[hidden]-> configuration
+core -[hidden]-> base
+api -[hidden]-> infrastructure
+api -[hidden]-> base
+infrastructure -[hidden]-> api
+infrastructure -[hidden]-> base
+configuration -[hidden]-> api
+configuration -[hidden]-> base
+
+note top of core : No dependencies to outer layers\nPure business logic
+note bottom of base : Application entry point\nArchitecture tests
+note right of infrastructure : External integrations\n(Redis, etc.)
+note left of api : REST endpoints\nControllers
+note bottom of configuration : Wires everything together
+
+@enduml
