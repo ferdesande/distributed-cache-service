@@ -1,6 +1,6 @@
 package com.fsg.cacheservice.integration
 
-import com.fsg.cacheservice.testcontainers.WithTestContainers
+import com.fsg.cacheservice.testcontainers.RedisTestWithInsightBase
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.notNullValue
@@ -11,8 +11,7 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.redis.core.RedisTemplate
 
 @SpringBootTest
-@WithTestContainers(redis = true)
-class RedisConnectionTest {
+class RedisConnectionTest : RedisTestWithInsightBase() {
 
     // HINT: Tests to check that Redis is correctly configured to work with test containers
 
