@@ -20,12 +20,23 @@ repositories {
     mavenCentral()
 }
 
+dependencyManagement {
+    imports {
+        mavenBom(libs.testcontainers.bom.get().toString())
+    }
+}
+
 dependencies {
     implementation(libs.spring.boot.starter)
+    implementation(libs.spring.boot.starter.data.redis)
     implementation(libs.kotlin.reflect)
+
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.tngtech.archunit)
+    testImplementation(libs.testcontainers.junit.jupiter)
+    testImplementation(libs.testcontainers.testcontainers)
+
     testRuntimeOnly(libs.junit.platform.launcher)
 }
 
