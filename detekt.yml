@@ -431,8 +431,8 @@ style:
     includeLineWrapping: false
   ForbiddenComment:
     active: true
-    values: [ 'TODO:', 'FIXME:', 'STOPSHIP:' ]
-    allowedPatterns: ''
+    values: [ 'FIXME:', 'STOPSHIP:' ]
+    allowedPatterns: 'TODO'
   ForbiddenImport:
     active: false
     imports: [ ]

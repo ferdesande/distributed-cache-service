@@ -6,17 +6,22 @@ import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.notNullValue
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
-import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.data.redis.core.RedisTemplate
+import org.springframework.test.context.DynamicPropertyRegistry
+import org.springframework.test.context.DynamicPropertySource
 
 @SpringBootTest
 class RedisConnectionTest : RedisTestWithInsightBase() {
+    companion object {
+        @DynamicPropertySource
+        @JvmStatic
+        @Suppress("Unused")
+        fun configureProperties(registry: DynamicPropertyRegistry) {
+            configureRedisProperties(registry)
+        }
+    }
 
     // HINT: Tests to check that Redis is correctly configured to work with test containers
-
-    @Autowired
-    private lateinit var redisTemplate: RedisTemplate<String, String>
 
     @Test
     fun `should connect to Redis and perform basic operations`() {
