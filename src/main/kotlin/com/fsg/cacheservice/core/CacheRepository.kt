@@ -12,21 +12,22 @@ interface CacheRepository {
     // HINT: just remove a single key due to specification does not request for multiple key deletion
     fun delete(key: String): Boolean
 
-    fun getCacheKeyCount(): Long
+    fun getCacheKeyCount(): Int
 
-    // HINT: Key is set to 1 if it did not exist
-    fun increment(key: String): Long
+    // HINT: Key is set to 1 if it did not exist and null if it's part of a pipeline/transaction
+    fun increment(key: String): Long?
 
-    // HINT: All sorted set items are 0-based rank with 0 as the smallest rank
+    // HINT: All sorted set items are hidden under the alias ranked element
+    //       being 0-based rank with 0 as the smallest rank
 
     // HINT: Returns true if member was added or false if it was just updated
-    fun sortedSetAdd(key: String, score: Double, member: String): Boolean
+    fun setRankedElement(key: String, score: Double, member: String): Boolean
 
-    fun getSortedSetElementCount(key: String): Long
+    fun getRankedElementCount(key: String): Long
 
     // HINT: Returns null if member doesn't exist
-    fun sortedSetRank(key: String, member: String): Long?
+    fun getRankedElementPosition(key: String, member: String): Long?
 
     // HINT: Both start and stop indices are inclusive
-    fun sortedSetRange(key: String, start: Long, stop: Long): List<String>
+    fun getRankedElementRange(key: String, start: Long, stop: Long): List<String>
 }
