@@ -1,6 +1,7 @@
 package com.fsg.cacheservice
 
 import com.tngtech.archunit.core.domain.JavaClasses
+import com.tngtech.archunit.core.importer.ImportOption
 import com.tngtech.archunit.junit.AnalyzeClasses
 import com.tngtech.archunit.junit.ArchTest
 import com.tngtech.archunit.lang.syntax.ArchRuleDefinition
@@ -8,9 +9,12 @@ import com.tngtech.archunit.library.GeneralCodingRules
 import com.tngtech.archunit.library.dependencies.SlicesRuleDefinition
 import com.tngtech.archunit.library.plantuml.rules.PlantUmlArchCondition
 import org.junit.jupiter.api.DisplayName
-import java.util.Objects
+import java.util.*
 
-@AnalyzeClasses(packages = ["com.fsg.cacheservice"])
+@AnalyzeClasses(
+    packages = ["com.fsg.cacheservice"],
+    importOptions = [ImportOption.DoNotIncludeTests::class]
+)
 @DisplayName("Architecture Tests")
 class ArchitectureTest {
 

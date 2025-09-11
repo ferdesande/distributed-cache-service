@@ -1,9 +1,13 @@
 package com.fsg.cacheservice.testcontainers
 
+import org.slf4j.LoggerFactory
 import org.springframework.test.context.TestContext
 import org.springframework.test.context.TestExecutionListener
 
 class TestContainerExecutionListener : TestExecutionListener {
+
+    private val logger = LoggerFactory.getLogger(TestContainerExecutionListener::class.java)
+
     /**
      * HINT: Orchestrates multiple test containers based on @TestContainers annotation parameters.
      *
@@ -23,7 +27,7 @@ class TestContainerExecutionListener : TestExecutionListener {
 
         if (annotation.redisInsight) {
             RedisInsightTestContainerSingleton.start()
-            println("RedisInsight: ${RedisInsightTestContainerSingleton.url}")
+            logger.info("RedisInsight available at: ${RedisInsightTestContainerSingleton.url}")
         }
     }
 }
