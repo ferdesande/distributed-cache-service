@@ -1,0 +1,353 @@
+---
+openapi: 3.0.0
+info:
+  title: Cache Service API
+  version: 1.0.0
+  description: |
+    Simple cache service providing key-value storage, counter operations, and ranking functionality.
+    Built with Spring Boot and Redis backend.
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+paths:
+  /{key}:
+    get:
+      summary: Get cache value
+      description: Retrieve the value associated with the specified key
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+      responses:
+        '200':
+          description: Value found
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "cool-value"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Key-Value Operations
+
+    put:
+      summary: Set cache value
+      description: Store a value with optional TTL (Time To Live)
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+        - name: ttl
+          in: query
+          description: Time to live in seconds. If not set, the key lives forever
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            example: 300
+      requestBody:
+        required: true
+        content:
+          text/plain:
+            schema:
+              type: string
+              example: "cool-value"
+      responses:
+        '200':
+          description: Value set successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Key-Value Operations
+
+    delete:
+      summary: Delete cache key
+      description: Remove the key and its associated value from cache
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+      responses:
+        '200':
+          description: Key deleted successfully
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Key-Value Operations
+
+  /{key}/increment:
+    put:
+      summary: Increment counter
+      description: Increment the numeric value stored at key. Creates key with value 1 if it doesn't exist.
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+      responses:
+        '200':
+          description: Counter incremented successfully
+          content:
+            text/plain:
+              schema:
+                type: integer
+                example: 5
+        '400':
+          description: Value cannot be incremented (non-numeric)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Counter Operations
+
+  /{key}/ranking:
+    post:
+      summary: Set ranked element
+      description: Add or update a member in the ranking with the specified score
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RankingMember'
+      responses:
+        '200':
+          description: Member updated successfully in ranking
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+        '201':
+          description: Member added successfully in ranking
+          content:
+            text/plain:
+              schema:
+                type: string
+                example: "OK"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Ranking Operations
+
+  /{key}/ranking/{member}/rank:
+    get:
+      summary: Get member rank
+      description: Get the rank (position) of a member in the ranking. Rank is 0-based with 0 being the lowest score.
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+        - name: member
+          in: path
+          required: true
+          description: Member name to get rank for
+          schema:
+            type: string
+            example: "player1"
+      responses:
+        '200':
+          description: Member rank found
+          content:
+            text/plain:
+              schema:
+                type: integer
+                minimum: 0
+                example: 0
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Ranking Operations
+
+  /{key}/ranking/range:
+    get:
+      summary: Get ranking range
+      description: Get a range of members from the ranking, ordered by score (lowest to highest)
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+        - name: start
+          in: query
+          required: true
+          description: Start index (inclusive, 0-based)
+          schema:
+            type: integer
+            minimum: 0
+            example: 0
+        - name: stop
+          in: query
+          required: true
+          description: Stop index (inclusive, 0-based)
+          schema:
+            type: integer
+            minimum: 0
+            example: 9
+      responses:
+        '200':
+          description: Range retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: string
+                example: ["player1", "player2", "player3"]
+        '400':
+          description: Invalid range parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Ranking Operations
+
+  /{key}/ranking/count:
+    get:
+      summary: Get ranking element count
+      description: Get the total number of members in the ranking
+      parameters:
+        - $ref: '#/components/parameters/KeyPath'
+      responses:
+        '200':
+          description: Count retrieved successfully
+          content:
+            text/plain:
+              schema:
+                type: integer
+                minimum: 0
+                example: 5
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Ranking Operations
+
+  /keys/count:
+    get:
+      summary: Get total key count
+      description: Get the total number of keys stored in the cache
+      responses:
+        '200':
+          description: Key count retrieved successfully
+          content:
+            text/plain:
+              schema:
+                type: integer
+                minimum: 0
+                example: 42
+        '500':
+          $ref: '#/components/responses/InternalError'
+      tags:
+        - Management Operations
+
+components:
+  parameters:
+    KeyPath:
+      name: key
+      in: path
+      required: true
+      description: Cache key identifier
+      schema:
+        type: string
+        minLength: 1
+        example: "user:123"
+
+  schemas:
+    RankingMember:
+      type: object
+      required:
+        - member
+        - score
+      properties:
+        member:
+          type: string
+          description: Member identifier
+          minLength: 1
+          example: "player1"
+        score:
+          type: number
+          format: double
+          description: Numeric score for ranking
+          example: 1500.0
+
+    ErrorResponse:
+      type: object
+      required:
+        - error
+      properties:
+        error:
+          type: object
+          required:
+            - code
+            - message
+            - timestamp
+            - path
+          properties:
+            code:
+              type: string
+              description: Error code
+              example: "ERROR_CODE"
+            message:
+              type: string
+              description: Human-readable error message
+              example: "The error description"
+            timestamp:
+              type: string
+              format: date-time
+              description: When the error occurred
+              example: "2024-01-15T10:30:00Z"
+            path:
+              type: string
+              description: Request path that caused the error
+              example: "/path/to/the/error"
+
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Key not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+tags:
+  - name: Key-Value Operations
+    description: Basic cache operations for storing and retrieving values
+  - name: Counter Operations
+    description: Operations for numeric counters
+  - name: Ranking Operations
+    description: Operations for managing ranked elements
+  - name: Management Operations
+    description: Cache management and statistics

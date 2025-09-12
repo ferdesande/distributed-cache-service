@@ -31,11 +31,16 @@ dependencies {
     implementation(libs.spring.boot.starter.data.redis)
     implementation(libs.kotlin.reflect)
 
+    implementation(libs.spring.boot.starter.web)
+    implementation(libs.spring.boot.starter.aop)
+    implementation(libs.spring.boot.starter.validation)
     testImplementation(libs.spring.boot.starter.test)
     testImplementation(libs.kotlin.test.junit5)
     testImplementation(libs.tngtech.archunit)
     testImplementation(libs.testcontainers.junit.jupiter)
     testImplementation(libs.testcontainers.testcontainers)
+    testImplementation(libs.restassured.core)
+    testImplementation(libs.restassured.kotlin)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 }
