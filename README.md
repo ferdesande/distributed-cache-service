@@ -1,37 +1,114 @@
 # Cache Service
+
 A service wrapper example to implement a distributed cache over a REST service.
 
 ## Overview
+
 The scope of the service is to provide a cache system by using a subset of Redis instructions. In the future this
 structure can be replaced by another solution.
 
-## Technical stack
+## Prerequisites
+
+- **Java**: OpenJDK 21 or higher
+- **Docker**: For running Redis locally
+- **Docker Compose**: For orchestrating local development infrastructure
+
+## Quick Start
+
+1. **Clone the repository**
+   ```bash
+   git clone <repository-url>
+   cd cache-service
+   ```
+
+2. **Start local infrastructure**
+   ```bash
+   cd infrastructure/local
+   docker-compose up -d
+   ```
+
+3. **Run the application**
+   ```bash
+   ./gradlew bootRun
+   ```
+
+4. **Verify the service is running**
+   ```bash
+   curl http://localhost:8080/keys/count
+   # Should return: 0
+   ```
+
+## API Usage Examples
+
+### Basic Key-Value Operations
+
+```bash
+# Set a value
+curl -X PUT "http://localhost:8080/mykey" \
+     -H "Content-Type: text/plain" \
+     -d "Hello World"
+
+# Get a value
+curl http://localhost:8080/mykey
+# Returns: Hello World
+
+# Delete a key
+curl -X DELETE http://localhost:8080/mykey
+
+# Count total keys
+curl http://localhost:8080/keys/count
+```
+
+### Counter Operations
+
+```bash
+# Increment a counter
+curl -X PUT http://localhost:8080/counter/increment
+# Returns: 1
+
+# Increment again
+curl -X PUT http://localhost:8080/counter/increment
+# Returns: 2
+```
+
+### Ranking Operations
+
+```bash
+# Add players to ranking
+curl -X POST "http://localhost:8080/leaderboard/ranking" \
+     -H "Content-Type: application/json" \
+     -d '{"member": "player1", "score": 100.0}'
+
+curl -X POST "http://localhost:8080/leaderboard/ranking" \
+     -H "Content-Type: application/json" \
+     -d '{"member": "player2", "score": 250.0}'
+
+# Get player rank (0-based)
+curl http://localhost:8080/leaderboard/ranking/player1/rank
+# Returns: 0 (lowest score = rank 0)
+
+# Get ranking range
+curl "http://localhost:8080/leaderboard/ranking/range?start=0&stop=10"
+# Returns: ["player1", "player2"]
+
+# Get ranking count
+curl http://localhost:8080/leaderboard/ranking/count
+# Returns: 2
+```
+
+## Technical Stack
 
 - **Language**: Kotlin
 - **Framework**: Spring Boot 3
 - **Architecture**: Onion Architecture
+- **Cache**: Redis
 - **Testing**: JUnit 5, TestContainers
 - **Build**: Gradle
-
-## Development approach
-All stories should be implemented to support a future interaction with IA agents. To achieve this, every story must
-be documented in a card placed in the `docs/stories` directory using Markdown format. Each story includes:
-- User story definition
-- Acceptance criteria
-- Technical considerations
-- Implementation notes
-
-See [Development Stories](docs/stories/README.md) for understanding the current roadmap.
-
-## Architecture
-As the project scope is simple, an onion architecture has been chosen. If in the future the project evolves,
-don't stick to this architecture without thinking pros and cons of moving to a more sophisticated one.
-
-ArchUnit will be used to ensure no one breaks the designed architecture.  
+- **Architecture Validation**: ArchUnit
 
 ## Local Development Infrastructure
 
-The directory `/infrastructure/local` contains a Docker Compose configuration for local development.
+The directory `infrastructure/local` contains a Docker Compose configuration for local development.
 
 ### Services
 
@@ -41,6 +118,8 @@ The directory `/infrastructure/local` contains a Docker Compose configuration fo
 ### Usage
 
 ```bash
+cd infrastructure/local
+
 # Start services
 docker-compose up -d
 
@@ -65,39 +144,126 @@ docker-compose down -v
 - Data is persisted in Docker volume `redis_data`
 - Memory limit: 256MB with LRU eviction policy
 
+## Application Configuration
+
+The application can be configured through `application.yaml`:
+
+## Building and Testing
+
+### Build the application
+
+```bash
+./gradlew build
+```
+
+### Run tests
+
+All tests
+```bash
+./gradlew test
+```
+
+Architecture validation only
+
+```bash
+./gradlew test --tests "*ArchitectureTest"
+```
+
+## Development Approach
+
+All stories should be implemented to support a future interaction with AI agents. To achieve this, every story must
+be documented in a card placed in the `docs/stories` directory using Markdown format. Each story includes:
+
+- User story definition
+- Acceptance criteria
+- Technical considerations
+- Implementation notes
+
+See [Development Stories](docs/stories/README.md) for understanding the current roadmap.
+
+## Architecture
+
+As the project scope is simple, an onion architecture has been chosen. If in the future the project evolves,
+don't stick to this architecture without thinking pros and cons of moving to a more sophisticated one.
+
+ArchUnit will be used to ensure no one breaks the designed architecture.
+
+### Package Structure
+
+```
+src/main/kotlin/com/fsg/cacheservice/
+├── CacheServiceApplication.kt          # Application entry point
+├── api/                                # REST controllers and DTOs
+├── core/                               # Domain logic and interfaces
+├── infrastructure/                     # External integrations (Redis)
+└── configuration/                      # Spring configuration
+```
+
 ## Test Infrastructure
 
-### Integration test
-**TestContainers** are used to be able to design integration test against the infrastructure. To ease the usage
-the annotation `@WithTestContainers` can be used.
+### Integration Tests
 
-### @WithTestContainers annotation
-This annotation orchestrate multiple tests containers. The idea is making easier the enabling of the needed containers.
+**TestContainers** are used to design integration tests against the infrastructure. The project provides
+base classes to simplify TestContainer usage.
 
-#### Usage example
+### Base Test Classes
+
+#### RedisTestBase
+
+Provides Redis container for integration tests:
+
 ```kotlin
 @SpringBootTest
-@WithTestContainers(redis = true, redisInsight = true)
-class MyIntegrationTest {
+class MyIntegrationTest : RedisTestBase() {
 
-    @Autowired
-    private lateinit var redisTemplate: RedisTemplate<String, String>
-    
+    companion object {
+        @DynamicPropertySource
+        @JvmStatic
+        @Suppress("Unused")
+        fun configureProperties(registry: DynamicPropertyRegistry) {
+            configureRedisProperties(registry)
+        }
+    }
+
     @Test
     fun `test redis operations`() {
-        // Redis available on dynamic port
+        // Redis container available automatically
+        redisTemplate.opsForValue().set("key", "value")
+        // ...
     }
 }
 ```
 
-#### Available parameters
-- `redis: Boolean = false`: Starts Redis container exposed on dynamic port
-- `redisInsight: Boolean = false`: Starts a container running RedisInsight. It's exposed in port 5541
+Calling the `configureRedisProperties` method is a workaround that must be fixed the sooner as possible.
 
-#### Features
+#### RedisTestWithInsightBase
 
-- Modular: Enable only the containers you need
-- Singleton containers: Shared across tests for performance
-- Port isolation: Test containers use different ports than development
-- Automatic configuration: Spring properties configured automatically
-- Dependency management: RedisInsight automatically depends on Redis
+In case a  RedisInsight container is needed together with the Redis one, the class `RedisTestWithInsightBase` can be
+used instead of `RedisTestBase`. It must be configured the same way.
+
+### Important Notes
+
+- **Port Isolation**: Test containers use different ports than development environment
+- **Shared Containers**: Containers are shared across tests for performance
+- **Automatic Cleanup**: Containers are automatically stopped after test execution
+
+## Troubleshooting
+
+### Common Issues
+
+**Tests failing with containers**
+
+```bash
+# Clean Docker resources
+docker system prune -f
+
+# Restart Docker daemon if needed
+```
+
+## Contributing
+
+1. Follow the existing code style and architecture patterns
+2. Write tests for new functionality
+3. Update documentation for API changes
+4. Ensure ArchUnit tests pass
+5. Create story cards for new features in `docs/stories/`
