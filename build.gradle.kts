@@ -41,6 +41,7 @@ dependencies {
     testImplementation(libs.testcontainers.testcontainers)
     testImplementation(libs.restassured.core)
     testImplementation(libs.restassured.kotlin)
+    testImplementation(libs.mockito.kotlin)
 
     testRuntimeOnly(libs.junit.platform.launcher)
 }

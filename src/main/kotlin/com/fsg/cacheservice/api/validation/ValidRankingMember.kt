@@ -11,8 +11,8 @@ import kotlin.reflect.KClass
 @Constraint(validatedBy = [])
 @ReportAsSingleViolation
 @NotBlank
-annotation class ValidKey(
-    val message: String = "Key cannot be blank",
+annotation class ValidRankingMember(
+    val message: String = "Member cannot be blank",
     val groups: Array<KClass<*>> = [],
     val payload: Array<KClass<out Payload>> = []
 )

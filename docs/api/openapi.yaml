@@ -181,7 +181,9 @@ paths:
   /{key}/ranking/range:
     get:
       summary: Get ranking range
-      description: Get a range of members from the ranking, ordered by score (lowest to highest)
+      description: |
+        Get a range of members from the ranking, ordered by score (lowest to highest). There is a 
+        limitation of 100 elements in the response
       parameters:
         - $ref: '#/components/parameters/KeyPath'
         - name: start

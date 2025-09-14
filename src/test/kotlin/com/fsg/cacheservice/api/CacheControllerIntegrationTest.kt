@@ -1,11 +1,24 @@
 package com.fsg.cacheservice.api
 
 import com.fsg.cacheservice.api.dto.RankingMemberDto
+import com.fsg.cacheservice.api.helper.DataMother.ANOTHER_RANKING_MEMBER
+import com.fsg.cacheservice.api.helper.DataMother.HIGH_SCORE
+import com.fsg.cacheservice.api.helper.DataMother.LOW_SCORE
+import com.fsg.cacheservice.api.helper.DataMother.MEDIUM_SCORE
+import com.fsg.cacheservice.api.helper.DataMother.SAMPLE_KEY
+import com.fsg.cacheservice.api.helper.DataMother.SAMPLE_RANKING_MEMBER
+import com.fsg.cacheservice.api.helper.DataMother.SAMPLE_RANKING_MEMBER_DTO
+import com.fsg.cacheservice.api.helper.DataMother.SAMPLE_VALUE
+import com.fsg.cacheservice.api.helper.DataMother.TIMESTAMP
+import com.fsg.cacheservice.api.helper.ValidatableResponseHelper.expectBadRequestResponse
+import com.fsg.cacheservice.api.helper.ValidatableResponseHelper.expectErrorResponse
+import com.fsg.cacheservice.core.ValueGenerator
 import com.fsg.cacheservice.testcontainers.RedisTestBase
 import io.restassured.RestAssured
 import io.restassured.module.kotlin.extensions.Given
 import io.restassured.module.kotlin.extensions.Then
 import io.restassured.module.kotlin.extensions.When
+import io.restassured.response.ValidatableResponse
 import org.apache.http.HttpStatus
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.equalTo
@@ -17,15 +30,17 @@ import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.mockito.kotlin.whenever
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.http.MediaType
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import java.time.Duration
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class CacheControllerTest : RedisTestBase() {
+class CacheControllerIntegrationTest : RedisTestBase() {
 
     companion object {
         private const val KEY_PATH_PARAMETER = "key"
@@ -33,18 +48,10 @@ class CacheControllerTest : RedisTestBase() {
         private const val KEY_VALUE_PATH = "/{$KEY_PATH_PARAMETER}"
         private const val RANKING_BASE_PATH = "/{$KEY_PATH_PARAMETER}/ranking"
         private const val KEY_COUNT_PATH = "/keys/count"
-        private const val SAMPLE_KEY = "a-sample-key"
-        private const val SAMPLE_VALUE = "a sample value"
         private const val ANOTHER_VALUE = "another value"
         private const val SHORT_TTL = 1
         private const val DEFAULT_TTL = 300
         private const val SHORT_DELAY_IN_MILLIS = 1100L
-        private const val LOW_SCORE = 1500.0
-        private const val MEDIUM_SCORE = 2000.0
-        private const val HIGH_SCORE = 2500.0
-        private const val SAMPLE_RANKING_MEMBER = "player1"
-        private const val ANOTHER_RANKING_MEMBER = "player2"
-        private val SAMPLE_RANKING_MEMBER_DTO = RankingMemberDto(SAMPLE_RANKING_MEMBER, LOW_SCORE)
 
         @DynamicPropertySource
         @JvmStatic
@@ -56,6 +63,9 @@ class CacheControllerTest : RedisTestBase() {
 
     @LocalServerPort
     private var port: Int = 0
+
+    @MockitoBean
+    private lateinit var valueGenerator: ValueGenerator
 
     @BeforeEach
     fun setUp() {
@@ -78,6 +88,20 @@ class CacheControllerTest : RedisTestBase() {
                 statusCode(HttpStatus.SC_OK)
                 contentType(MediaType.TEXT_PLAIN_VALUE)
                 body(equalTo(SAMPLE_VALUE))
+            }
+        }
+
+        @Test
+        fun `returns 404 when key does not exist in cache`() {
+            configureErrorTimestamp()
+            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                get(KEY_VALUE_PATH)
+            } Then {
+                expectKeyNotFound(path = "/$SAMPLE_KEY")
             }
         }
     }
@@ -191,8 +215,21 @@ class CacheControllerTest : RedisTestBase() {
                 body(equalTo("OK"))
             }
 
-            // Verify key was deleted
             assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+        }
+
+        @Test
+        fun `returns 404 when deleting non-existing key`() {
+            configureErrorTimestamp()
+            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                delete(KEY_VALUE_PATH)
+            } Then {
+                expectKeyNotFound(path = "/$SAMPLE_KEY")
+            }
         }
     }
 
@@ -230,6 +267,23 @@ class CacheControllerTest : RedisTestBase() {
             }
 
             assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), equalTo("6"))
+        }
+
+        @Test
+        fun `returns 400 when key exists with non-numeric value`() {
+            configureErrorTimestamp()
+            redisTemplate.opsForValue().set(SAMPLE_KEY, "not-a-number")
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                put("$KEY_VALUE_PATH/increment")
+            } Then {
+                expectBadRequestResponse(
+                    message = "Key cannot be increased, contains non integer or out of range value",
+                    path = "/$SAMPLE_KEY/increment",
+                )
+            }
         }
     }
 
@@ -304,6 +358,41 @@ class CacheControllerTest : RedisTestBase() {
                 statusCode(HttpStatus.SC_OK)
                 contentType(MediaType.TEXT_PLAIN_VALUE)
                 body(equalTo(rank))
+            }
+        }
+
+        @Test
+        fun `returns 404 when member does not exist in ranking`() {
+            configureErrorTimestamp()
+            redisTemplate.opsForZSet().add(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, 100.0)
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+                pathParam(MEMBER_PATH_PARAMETER, "non-existing-player")
+            } When {
+                get(getPath)
+            } Then {
+                expectErrorResponse(
+                    status = HttpStatus.SC_NOT_FOUND,
+                    code = "NOT_FOUND",
+                    message = "Member non-existing-player not found in ranking",
+                    path = "/$SAMPLE_KEY/ranking/non-existing-player/rank"
+                )
+            }
+        }
+
+        @Test
+        fun `returns 404 when ranking key does not exist`() {
+            configureErrorTimestamp()
+            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+                pathParam(MEMBER_PATH_PARAMETER, SAMPLE_RANKING_MEMBER)
+            } When {
+                get(getPath)
+            } Then {
+                expectKeyNotFound("/$SAMPLE_KEY/ranking/$SAMPLE_RANKING_MEMBER/rank")
             }
         }
     }
@@ -454,4 +543,17 @@ class CacheControllerTest : RedisTestBase() {
             }
         }
     }
+
+    private fun configureErrorTimestamp() {
+        whenever(valueGenerator.now()).thenReturn(TIMESTAMP)
+    }
+
+    private fun ValidatableResponse.expectKeyNotFound(
+        path: String
+    ): ValidatableResponse = this.expectErrorResponse(
+        status = HttpStatus.SC_NOT_FOUND,
+        code = "NOT_FOUND",
+        message = "Key $SAMPLE_KEY not found",
+        path = path
+    )
 }

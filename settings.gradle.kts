@@ -45,6 +45,7 @@ dependencyResolutionManagement {
             library("testcontainers-testcontainers", "org.testcontainers", "testcontainers").withoutVersion()
             library("restassured-core", "io.rest-assured", "rest-assured").versionRef("restassured")
             library("restassured-kotlin", "io.rest-assured", "kotlin-extensions").versionRef("restassured")
+            library("mockito-kotlin", "org.mockito.kotlin", "mockito-kotlin").version("3.2.0")
         }
     }
 }
