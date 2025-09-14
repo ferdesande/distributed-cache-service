@@ -14,15 +14,16 @@ assistants in the future to get a deep understanding on how the project evolved.
 
 ## Story Status
 
-| ID  | Story                                         | Status      | Description                                       |
-|-----|-----------------------------------------------|-------------|---------------------------------------------------|
-| 001 | Setup Project                                 | ✅ Done      | Initial project configuration and structure       |
-| 002 | ArchUnit Definition                           | ✅ Done      | Configure ArchUnit for architectural compliance   |
-| 003 | Cache Repository Definition                   | ✅ Done      | Define core cache repository interface            |
-| 004 | Configure Redis and Test Dependencies         | ✅ Done      | Add Redis, TestContainers and integration tests   |
-| 005 | Implement Cache Repository with Redis         | ✅ Done      | Implement Redis-based cache repository            |
-| 006 | Expose Cache Repository over READ API Service | 🏗️ Planned | Implement REST API controller to expose the cache |
-| 007 | Control REST API errors with ControllerAdvice | 🏗️ Planned | Handle HTTP error responses and exceptions using ControllerAdvice  |
+| ID  | Story                                         | Status      | Description                                                       |
+|-----|-----------------------------------------------|-------------|-------------------------------------------------------------------|
+| 001 | Setup Project                                 | ✅ Done      | Initial project configuration and structure                       |
+| 002 | ArchUnit Definition                           | ✅ Done      | Configure ArchUnit for architectural compliance                   |
+| 003 | Cache Repository Definition                   | ✅ Done      | Define core cache repository interface                            |
+| 004 | Configure Redis and Test Dependencies         | ✅ Done      | Add Redis, TestContainers and integration tests                   |
+| 005 | Implement Cache Repository with Redis         | ✅ Done      | Implement Redis-based cache repository                            |
+| 006 | Expose Cache Repository over READ API Service | ✅ Done      | Implement REST API controller to expose the cache                 |
+| 007 | Control REST API errors with ControllerAdvice | ✅ Done      | Handle HTTP error responses and exceptions using ControllerAdvice |
+| 007 | Document application setup                    | 🏗️ Planned | Document how to setup the projecto develop locally                |
 
 ## Status Legend
 
