@@ -7,21 +7,11 @@ import org.hamcrest.Matchers.notNullValue
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.Test
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 
 @SpringBootTest
 class RedisConnectionTest : RedisTestWithInsightBase() {
-    companion object {
-        @DynamicPropertySource
-        @JvmStatic
-        @Suppress("Unused")
-        fun configureProperties(registry: DynamicPropertyRegistry) {
-            configureRedisProperties(registry)
-        }
-    }
 
-    // HINT: Tests to check that Redis is correctly configured to work with test containers
+    // HINT: Check that Redis is correctly configured to work with test containers
 
     @Test
     fun `should connect to Redis and perform basic operations`() {

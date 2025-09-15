@@ -34,8 +34,6 @@ import org.mockito.kotlin.whenever
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.http.MediaType
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import org.springframework.test.context.bean.override.mockito.MockitoBean
 import java.time.Duration
 
@@ -52,13 +50,6 @@ class CacheControllerIntegrationTest : RedisTestBase() {
         private const val SHORT_TTL = 1
         private const val DEFAULT_TTL = 300
         private const val SHORT_DELAY_IN_MILLIS = 1100L
-
-        @DynamicPropertySource
-        @JvmStatic
-        @Suppress("Unused")
-        fun configureProperties(registry: DynamicPropertyRegistry) {
-            configureRedisProperties(registry)
-        }
     }
 
     @LocalServerPort

@@ -19,8 +19,6 @@ import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
-import org.springframework.test.context.DynamicPropertyRegistry
-import org.springframework.test.context.DynamicPropertySource
 import java.time.Duration
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -60,13 +58,6 @@ class RedisCacheRepositoryTest : RedisTestBase() {
         private const val NEGATIVE_RANKED_RANGE_INDEX_ERROR_MESSAGE =
             "Indexes for a range must be greater than or equal to 0"
         private const val INVERTED_RANKED_RANGE_INDEXES_ERROR_MESSAGE = "Start range is greater than end range"
-
-        @DynamicPropertySource
-        @JvmStatic
-        @Suppress("Unused")
-        fun configureProperties(registry: DynamicPropertyRegistry) {
-            configureRedisProperties(registry)
-        }
     }
 
     @Nested
