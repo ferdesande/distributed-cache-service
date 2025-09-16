@@ -15,7 +15,7 @@ import org.testcontainers.containers.GenericContainer
 import org.testcontainers.junit.jupiter.Container
 
 @SpringBootTest
-class RedisCacheRepositoryTestAcceptanceTest : CacheRepositoryTestAcceptanceTest() {
+class RedisCacheRepositoryAcceptanceTest : CacheRepositoryTestAcceptanceTest() {
     companion object {
         @Container
         @JvmStatic

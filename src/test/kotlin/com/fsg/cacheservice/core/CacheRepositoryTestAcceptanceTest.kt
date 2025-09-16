@@ -34,7 +34,8 @@ abstract class CacheRepositoryTestAcceptanceTest {
         private val SHORT_TTL = Duration.ofMillis(10)
         private val MEDIUM_TTL = Duration.ofMillis(100)
 
-        private const val SMALL_RANK = 1.0
+        private const val SMALLEST_RANK = 1.0
+        private const val SMALL_RANK = 2.0
         private const val MEDIUM_RANK = 5.0
         private const val HIGH_RANK = 10.0
         private const val HIGHEST_RANK = 15.0
@@ -88,6 +89,20 @@ abstract class CacheRepositoryTestAcceptanceTest {
 
             // Then
             assertThat(repository.get(SAMPLE_KEY), equalTo(ANOTHER_VALUE))
+            assertThat(repository.getCacheKeyCount(), equalTo(1))
+        }
+
+        @Test
+        fun `set should override a ranking`() {
+            // Given
+            assertThat(repository.getRankedElementCount(SAMPLE_KEY), equalTo(0L))
+            repository.setRankedElement(SAMPLE_KEY, SMALL_RANK, FIRST_MEMBER)
+
+            // When
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE)
+
+            // Then
+            assertThat(repository.get(SAMPLE_KEY), equalTo(SAMPLE_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
 
@@ -167,6 +182,17 @@ abstract class CacheRepositoryTestAcceptanceTest {
             Thread.sleep(SLEEP_IN_MILLIS)
 
             assertThat(repository.get(SAMPLE_KEY), nullValue())
+            assertThat(repository.getCacheKeyCount(), equalTo(0))
+        }
+
+        @Test
+        fun `get key count does not include expired keys`() {
+            // Given
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE, SHORT_TTL)
+            assertThat(repository.getCacheKeyCount(), equalTo(1))
+            Thread.sleep(SLEEP_IN_MILLIS)
+
+            // When / Then
             assertThat(repository.getCacheKeyCount(), equalTo(0))
         }
 
@@ -376,18 +402,35 @@ abstract class CacheRepositoryTestAcceptanceTest {
         }
 
         @Test
-        fun `several set elements are return in order`() {
+        fun `elements are return in order after update member score`() {
             // Given
             assertThat(repository.setRankedElement(RANKING_KEY, MEDIUM_RANK, FIRST_MEMBER), equalTo(true))
             assertThat(repository.setRankedElement(RANKING_KEY, HIGHEST_RANK, SECOND_MEMBER), equalTo(true))
             assertThat(repository.setRankedElement(RANKING_KEY, SMALL_RANK, THIRD_MEMBER), equalTo(true))
             assertThat(repository.setRankedElement(RANKING_KEY, HIGH_RANK, FORTH_MEMBER), equalTo(true))
+            assertThat(repository.setRankedElement(RANKING_KEY, SMALLEST_RANK, FORTH_MEMBER), equalTo(false))
 
             // When
             val sortedMembers = repository.getRankedElementRange(RANKING_KEY, 0, 3)
 
             // Then
-            assertThat(sortedMembers, contains(THIRD_MEMBER, FIRST_MEMBER, FORTH_MEMBER, SECOND_MEMBER))
+            assertThat(sortedMembers, contains(FORTH_MEMBER, THIRD_MEMBER, FIRST_MEMBER, SECOND_MEMBER))
+        }
+
+        @Test
+        fun `set ranked element throws an exception when try to override an string value`() {
+            // Given
+            assertThat(repository.getRankedElementCount(RANKING_KEY), equalTo(0L))
+            repository.set(RANKING_KEY, SAMPLE_VALUE)
+
+            // When
+            val exception = assertThrows<WrongTypeException> {
+                repository.setRankedElement(RANKING_KEY, SMALL_RANK, FIRST_MEMBER)
+            }
+
+            // Then
+            assertThat(exception.message, equalTo("The value for key '$RANKING_KEY' is not a Ranking"))
+            assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
 
         @Test
@@ -402,6 +445,22 @@ abstract class CacheRepositoryTestAcceptanceTest {
             assertThat(repository.getRankedElementPosition(RANKING_KEY, FIRST_MEMBER), equalTo(1))
             assertThat(repository.getRankedElementPosition(RANKING_KEY, SECOND_MEMBER), equalTo(3))
             assertThat(repository.getRankedElementPosition(RANKING_KEY, THIRD_MEMBER), equalTo(0))
+            assertThat(repository.getRankedElementPosition(RANKING_KEY, FORTH_MEMBER), equalTo(2))
+            assertThat(repository.getRankedElementCount(RANKING_KEY), equalTo(4L))
+        }
+
+        @Test
+        fun `get ranked position returns the correct 0-based position with duplicated rank`() {
+            // Given
+            assertThat(repository.setRankedElement(RANKING_KEY, HIGHEST_RANK, FIRST_MEMBER), equalTo(true))
+            assertThat(repository.setRankedElement(RANKING_KEY, MEDIUM_RANK, THIRD_MEMBER), equalTo(true))
+            assertThat(repository.setRankedElement(RANKING_KEY, MEDIUM_RANK, SECOND_MEMBER), equalTo(true))
+            assertThat(repository.setRankedElement(RANKING_KEY, HIGH_RANK, FORTH_MEMBER), equalTo(true))
+
+            // When / Then
+            assertThat(repository.getRankedElementPosition(RANKING_KEY, FIRST_MEMBER), equalTo(3))
+            assertThat(repository.getRankedElementPosition(RANKING_KEY, SECOND_MEMBER), equalTo(0))
+            assertThat(repository.getRankedElementPosition(RANKING_KEY, THIRD_MEMBER), equalTo(1))
             assertThat(repository.getRankedElementPosition(RANKING_KEY, FORTH_MEMBER), equalTo(2))
             assertThat(repository.getRankedElementCount(RANKING_KEY), equalTo(4L))
         }
@@ -466,6 +525,7 @@ abstract class CacheRepositoryTestAcceptanceTest {
             value = [
                 "0, 3, $FIRST_MEMBER; $SECOND_MEMBER; $THIRD_MEMBER; $FORTH_MEMBER",
                 "1, 2, $SECOND_MEMBER; $THIRD_MEMBER",
+                "1, 1, $SECOND_MEMBER",
                 "1, 13, $SECOND_MEMBER; $THIRD_MEMBER; $FORTH_MEMBER",
                 "0, -1, $FIRST_MEMBER; $SECOND_MEMBER; $THIRD_MEMBER; $FORTH_MEMBER",
                 "-2, -1, $THIRD_MEMBER; $FORTH_MEMBER",
@@ -486,6 +546,19 @@ abstract class CacheRepositoryTestAcceptanceTest {
 
             // Then
             assertThat(result, equalTo(expectedResult))
+        }
+
+        @Test
+        fun `getRankedElementRange throws WrongTypeException when key is string`() {
+            // Given
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE)
+
+            // When / Then
+            val exception = assertThrows<WrongTypeException> {
+                repository.getRankedElementRange(SAMPLE_KEY, 0, 1)
+            }
+
+            assertThat(exception.message, equalTo("The value for key '$SAMPLE_KEY' is not a Ranking"))
         }
     }
 

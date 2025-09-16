@@ -23,7 +23,7 @@ interface CacheRepository {
     // HINT: Returns true if member was added, false if it was just updated
     fun setRankedElement(key: String, score: Double, member: String): Boolean?
 
-    fun getRankedElementCount(key: String): Long?
+    fun getRankedElementCount(key: String): Long
 
     // HINT: Returns null if member doesn't exist
     fun getRankedElementPosition(key: String, member: String): Long?

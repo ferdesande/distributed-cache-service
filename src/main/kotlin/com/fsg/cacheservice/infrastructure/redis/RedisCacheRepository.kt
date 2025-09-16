@@ -83,11 +83,18 @@ class RedisCacheRepository(
         }
     }
 
-    // Hint: This method returns null when it's used within a pipeline / transaction
     override fun setRankedElement(key: String, score: Double, member: String): Boolean =
-        redisTemplate.opsForZSet().add(key, member, score)!!
+        try {
+            redisTemplate.opsForZSet().add(key, member, score)!!
+        } catch (ex: RedisSystemException) {
+            throw when {
+                ex.cause is RedisCommandExecutionException && ex.cause!!.message?.contains("WRONGTYPE") == true ->
+                    WrongTypeException("The value for key '$key' is not a Ranking")
 
-    // Hint: This method returns null when it's used within a pipeline / transaction
+                else -> CacheException("Unhandled cache exception", ex)
+            }
+        }
+
     override fun getRankedElementCount(key: String): Long = redisTemplate.opsForZSet().zCard(key)!!
 
     override fun getRankedElementPosition(key: String, member: String): Long? =
@@ -97,5 +104,15 @@ class RedisCacheRepository(
         key: String,
         start: Long,
         stop: Long
-    ): List<String> = redisTemplate.opsForZSet().range(key, start, stop)?.toList() ?: emptyList()
+    ): List<String> =
+        try {
+            redisTemplate.opsForZSet().range(key, start, stop)?.toList() ?: emptyList()
+        }catch (ex: RedisSystemException){
+            throw when {
+                ex.cause is RedisCommandExecutionException && ex.cause!!.message?.contains("WRONGTYPE") == true ->
+                    WrongTypeException("The value for key '$key' is not a Ranking")
+
+                else -> CacheException("Unhandled cache exception", ex)
+            }
+        }
 }
