@@ -1,33 +1,30 @@
-package com.fsg.cacheservice.testcontainers
+package com.fsg.cacheservice.infrastructure.redis
 
+import com.fsg.cacheservice.core.CacheRepository
+import com.fsg.cacheservice.core.CacheRepositoryTestAcceptanceTest
 import com.fsg.cacheservice.testutils.RedisTestUtils
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.BeforeEach
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.junit.jupiter.Container
-import org.testcontainers.junit.jupiter.Testcontainers
 
-@Testcontainers
-@Suppress("UtilityClassWithPublicConstructor")
-abstract class RedisTestBase {
-
+@SpringBootTest
+class RedisCacheRepositoryTestAcceptanceTest : CacheRepositoryTestAcceptanceTest() {
     companion object {
         @Container
         @JvmStatic
-        protected val redisContainer: GenericContainer<*> = RedisTestUtils.createRedisContainer()
+        private val redisContainer: GenericContainer<*> = RedisTestUtils.createRedisContainer()
 
         @DynamicPropertySource
         @JvmStatic
         @Suppress("Unused")
         fun configureProperties(registry: DynamicPropertyRegistry) {
-            // HINT: It could happen that test classes using this as base class present flaky tests locally.
-            //       Before moving this configuration to every subclass. Restart docker locally first.
-            //       The key to fix the flaky tests is to start and stop the container in every test class.
             RedisTestUtils.configureRedisProperties(redisContainer, registry)
         }
 
@@ -45,10 +42,15 @@ abstract class RedisTestBase {
     }
 
     @BeforeEach
-    protected fun cleanupRedis() {
+    fun cleanupRedis() {
         RedisTestUtils.flushRedis(redisTemplate)
     }
 
     @Autowired
-    protected lateinit var redisTemplate: RedisTemplate<String, String>
+    private lateinit var redisTemplate: RedisTemplate<String, String>
+
+    @Autowired
+    private lateinit var repository: RedisCacheRepository
+
+    override fun setCacheRepository(): CacheRepository = repository
 }

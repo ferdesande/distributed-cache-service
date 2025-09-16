@@ -14,17 +14,15 @@ interface CacheRepository {
 
     fun getCacheKeyCount(): Int
 
-    // HINT: Key is set to 1 if it did not exist and null if it's part of a pipeline/transaction
-    fun increment(key: String): Long?
+    // HINT: Key is set to 1 if it did not exist
+    fun increment(key: String): Long
 
     // HINT: All sorted set items are hidden under the alias ranked element
     //       being 0-based rank with 0 as the smallest rank
 
     // HINT: Returns true if member was added, false if it was just updated
-    //       and null if it's part of a pipeline/transaction
     fun setRankedElement(key: String, score: Double, member: String): Boolean?
 
-    // HINT: return null if it's part of a pipeline/transaction
     fun getRankedElementCount(key: String): Long?
 
     // HINT: Returns null if member doesn't exist

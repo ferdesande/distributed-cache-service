@@ -1,9 +1,11 @@
 package com.fsg.cacheservice.infrastructure.redis
 
 import com.fsg.cacheservice.core.CacheRepository
+import com.fsg.cacheservice.core.exception.BadRequestException
 import com.fsg.cacheservice.core.exception.CacheException
-import com.fsg.cacheservice.core.exception.InvalidCacheRangeException
-import com.fsg.cacheservice.core.exception.InvalidIncrementValueException
+import com.fsg.cacheservice.core.exception.InvalidValueException
+import com.fsg.cacheservice.core.exception.OverflowException
+import com.fsg.cacheservice.core.exception.WrongTypeException
 import io.lettuce.core.RedisCommandExecutionException
 import org.springframework.data.redis.RedisSystemException
 import org.springframework.data.redis.core.RedisTemplate
@@ -22,6 +24,10 @@ class RedisCacheRepository(
     //   This would make it interchangeable with any other cache implementation
     // - Think if catch Redis exception in any method is needed or if it could be handled in the rest layer.
     override fun set(key: String, value: String, expiration: Duration?) {
+        if (expiration != null && (expiration.isZero || expiration.isNegative)) {
+            throw BadRequestException("Expiration time must greater than zero")
+        }
+
         if (expiration == null) {
             redisTemplate.opsForValue().set(key, value)
         } else {
@@ -29,22 +35,47 @@ class RedisCacheRepository(
         }
     }
 
-    override fun get(key: String): String? = redisTemplate.opsForValue().get(key)
+    override fun get(key: String): String? {
+        try {
+            return redisTemplate.opsForValue().get(key)
+        } catch (ex: RedisSystemException) {
+            throw when {
+                ex.cause is RedisCommandExecutionException && ex.cause!!.message?.contains("WRONGTYPE") == true ->
+                    WrongTypeException("The value for key '$key' is not a String")
+
+                else -> CacheException("Unhandled cache exception", ex)
+            }
+        }
+    }
 
     override fun delete(key: String): Boolean = redisTemplate.delete(key)
 
     override fun getCacheKeyCount(): Int = redisTemplate.keys("*").size
 
-    override fun increment(key: String): Long? {
+    override fun increment(key: String): Long {
         try {
-            return redisTemplate.opsForValue().increment(key)
+            // Hint: This method returns null when it's used within a pipeline / transaction
+            return redisTemplate.opsForValue().increment(key)!!
         } catch (ex: RedisSystemException) {
-            throw when (ex.cause) {
+            val cause = ex.cause
+            throw when (cause) {
                 is RedisCommandExecutionException -> {
-                    InvalidIncrementValueException(
-                        "Key cannot be increased, contains non integer or out of range value",
-                        ex.cause
-                    )
+                    val message = cause.message ?: ""
+                    when {
+                        message.contains("WRONGTYPE") ->
+                            WrongTypeException("The value for key '$key' is not a number")
+
+                        message.contains("ERR value is not an integer or out of range") ->
+                            InvalidValueException("The value for key '$key' is not a number")
+
+                        message.contains("ERR increment or decrement would overflow") ->
+                            OverflowException(
+                                "Increment for key '$key' cannot be done because result overflows 64-bits value"
+                            )
+
+                        else ->
+                            CacheException("Unexpected exception occurred while incrementing $key", ex.cause)
+                    }
                 }
 
                 else -> CacheException("Unexpected exception occurred while incrementing $key", ex)
@@ -52,12 +83,12 @@ class RedisCacheRepository(
         }
     }
 
-    override fun setRankedElement(key: String, score: Double, member: String): Boolean? =
-        redisTemplate.opsForZSet().add(key, member, score)
+    // Hint: This method returns null when it's used within a pipeline / transaction
+    override fun setRankedElement(key: String, score: Double, member: String): Boolean =
+        redisTemplate.opsForZSet().add(key, member, score)!!
 
-    override fun getRankedElementCount(key: String): Long? {
-        return redisTemplate.opsForZSet().zCard(key)
-    }
+    // Hint: This method returns null when it's used within a pipeline / transaction
+    override fun getRankedElementCount(key: String): Long = redisTemplate.opsForZSet().zCard(key)!!
 
     override fun getRankedElementPosition(key: String, member: String): Long? =
         redisTemplate.opsForZSet().rank(key, member)
@@ -66,12 +97,5 @@ class RedisCacheRepository(
         key: String,
         start: Long,
         stop: Long
-    ): List<String> {
-        if (start < 0 || stop < 0) {
-            throw InvalidCacheRangeException("Indexes for a range must be greater than or equal to 0")
-        } else if (start > stop) {
-            throw InvalidCacheRangeException("Start range is greater than end range")
-        }
-        return redisTemplate.opsForZSet().range(key, start, stop)?.toList() ?: emptyList()
-    }
+    ): List<String> = redisTemplate.opsForZSet().range(key, start, stop)?.toList() ?: emptyList()
 }

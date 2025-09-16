@@ -26,7 +26,7 @@ assistants in the future to get a deep understanding on how the project evolved.
 | 008 | Document application setup                                        | ✅ Done      | Document how to setup the project develop locally                                        |
 | 009 | Remove duplicated @DynamicPropertySource in RedisTestBase         | ✅ Done      | Stop duplicating @DynamicPropertySource configuration in every RedisTestBase subclass    |
 | 010 | Create Repository Agnostic Layer Acceptance Tests                 | ✅ Done      | Create abstract test class for technology-agnostic CacheRepository validation            |
-| 011 | Refactor CacheRepository Interface and Adapt Redis Implementation | 🏗️ Planned | Remove Redis concurrency errors from interface and ensure Redis passes acceptance tests  |
+| 011 | Refactor CacheRepository Interface and Adapt Redis Implementation | ✅ Done      | Remove Redis concurrency errors from interface and ensure Redis passes acceptance tests  |
 | 012 | Implement In-Memory CacheRepository                               | 🏗️ Planned | Create in-memory implementation using concurrent data structures for development/testing |
 
 ## Status Legend

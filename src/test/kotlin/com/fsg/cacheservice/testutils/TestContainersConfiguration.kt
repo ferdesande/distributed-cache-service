@@ -1,4 +1,4 @@
-package com.fsg.cacheservice.testcontainers
+package com.fsg.cacheservice.testutils
 
 object TestContainersConfiguration {
     const val REDIS_IMAGE = "redis:8-alpine"

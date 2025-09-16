@@ -1,8 +1,8 @@
 package com.fsg.cacheservice.testcontainers
 
-import com.fsg.cacheservice.testcontainers.TestContainersConfiguration.REDIS_INSIGHT_EXPOSED_PORT
-import com.fsg.cacheservice.testcontainers.TestContainersConfiguration.REDIS_INSIGHT_FIXED_EXPOSED_PORT
-import com.fsg.cacheservice.testcontainers.TestContainersConfiguration.REDIS_INSIGHT_IMAGE
+import com.fsg.cacheservice.testutils.TestContainersConfiguration.REDIS_INSIGHT_EXPOSED_PORT
+import com.fsg.cacheservice.testutils.TestContainersConfiguration.REDIS_INSIGHT_FIXED_EXPOSED_PORT
+import com.fsg.cacheservice.testutils.TestContainersConfiguration.REDIS_INSIGHT_IMAGE
 import com.github.dockerjava.api.model.PortBinding
 import org.slf4j.LoggerFactory
 import org.testcontainers.containers.GenericContainer

@@ -64,14 +64,14 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `set and get works as expected`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
 
             // When
-            repository.set(SAMPLE_VALUE, SAMPLE_VALUE)
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE)
             repository.set(ANOTHER_KEY, ANOTHER_VALUE)
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), equalTo(SAMPLE_VALUE))
+            assertThat(repository.get(SAMPLE_KEY), equalTo(SAMPLE_VALUE))
             assertThat(repository.get(ANOTHER_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(2))
         }
@@ -80,14 +80,14 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `override keys works as expected`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
 
             // When
-            repository.set(SAMPLE_VALUE, SAMPLE_VALUE)
-            repository.set(SAMPLE_VALUE, ANOTHER_VALUE)
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE)
+            repository.set(SAMPLE_KEY, ANOTHER_VALUE)
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), equalTo(ANOTHER_VALUE))
+            assertThat(repository.get(SAMPLE_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
 
@@ -112,20 +112,20 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `set and get with TTL works as expected`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
 
             // When
-            repository.set(SAMPLE_VALUE, SAMPLE_VALUE, SHORT_TTL)
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE, SHORT_TTL)
             repository.set(ANOTHER_KEY, ANOTHER_VALUE)
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), equalTo(SAMPLE_VALUE))
+            assertThat(repository.get(SAMPLE_KEY), equalTo(SAMPLE_VALUE))
             assertThat(repository.get(ANOTHER_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(2))
 
             Thread.sleep(SLEEP_IN_MILLIS)
 
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
             assertThat(repository.get(ANOTHER_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
@@ -134,19 +134,19 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `override keys without TTL removes the TTL`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
 
             // When
-            repository.set(SAMPLE_VALUE, SAMPLE_VALUE, SHORT_TTL)
-            repository.set(SAMPLE_VALUE, ANOTHER_VALUE)
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE, SHORT_TTL)
+            repository.set(SAMPLE_KEY, ANOTHER_VALUE)
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), equalTo(ANOTHER_VALUE))
+            assertThat(repository.get(SAMPLE_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
 
             Thread.sleep(SLEEP_IN_MILLIS)
 
-            assertThat(repository.get(SAMPLE_VALUE), equalTo(ANOTHER_VALUE))
+            assertThat(repository.get(SAMPLE_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
 
@@ -154,19 +154,19 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `override keys with TTL adds the TTL`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
 
             // When
-            repository.set(SAMPLE_VALUE, SAMPLE_VALUE)
-            repository.set(SAMPLE_VALUE, ANOTHER_VALUE, SHORT_TTL)
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE)
+            repository.set(SAMPLE_KEY, ANOTHER_VALUE, SHORT_TTL)
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), equalTo(ANOTHER_VALUE))
+            assertThat(repository.get(SAMPLE_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
 
             Thread.sleep(SLEEP_IN_MILLIS)
 
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
             assertThat(repository.getCacheKeyCount(), equalTo(0))
         }
 
@@ -175,7 +175,7 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `set with invalid TTL throws bad request exception`(duration: Long) {
             // When
             val exception = assertThrows<BadRequestException> {
-                repository.set(SAMPLE_VALUE, SAMPLE_VALUE, Duration.ofMillis(duration))
+                repository.set(SAMPLE_KEY, SAMPLE_VALUE, Duration.ofMillis(duration))
             }
 
             // Then
@@ -191,14 +191,14 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `delete existing key removes the string value and return true`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            repository.set(SAMPLE_VALUE, SAMPLE_VALUE)
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE)
             repository.set(ANOTHER_KEY, ANOTHER_VALUE)
 
             // When / Then
-            assertThat(repository.delete(SAMPLE_VALUE), equalTo(true))
+            assertThat(repository.delete(SAMPLE_KEY), equalTo(true))
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
             assertThat(repository.get(ANOTHER_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
@@ -207,14 +207,14 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `delete existing key removes the increment and return true`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            assertThat(repository.increment(SAMPLE_VALUE), equalTo(1))
+            assertThat(repository.increment(SAMPLE_KEY), equalTo(1))
             assertThat(repository.increment(ANOTHER_KEY), equalTo(1))
 
             // When / Then
-            assertThat(repository.delete(SAMPLE_VALUE), equalTo(true))
+            assertThat(repository.delete(SAMPLE_KEY), equalTo(true))
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
             assertThat(repository.get(ANOTHER_KEY), equalTo("1"))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
@@ -227,11 +227,11 @@ abstract class CacheRepositoryTestAcceptanceTest {
             assertThat(repository.setRankedElement(ANOTHER_KEY, MEDIUM_RANK, SECOND_MEMBER), equalTo(true))
 
             // When
-            assertThat(repository.delete(SAMPLE_VALUE), equalTo(true))
+            assertThat(repository.delete(SAMPLE_KEY), equalTo(true))
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
-            assertThat(repository.getRankedElementCount(SAMPLE_VALUE), equalTo(0))
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
+            assertThat(repository.getRankedElementCount(SAMPLE_KEY), equalTo(0))
             assertThat(repository.getRankedElementCount(ANOTHER_KEY), equalTo(1))
             assertThat(repository.getCacheKeyCount(), equalTo(1))
         }
@@ -240,17 +240,17 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `delete non-existing key return false`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            assertThat(repository.get(SAMPLE_VALUE), nullValue())
+            assertThat(repository.get(SAMPLE_KEY), nullValue())
 
             // When
-            repository.set(SAMPLE_VALUE, SAMPLE_VALUE)
+            repository.set(SAMPLE_KEY, SAMPLE_VALUE)
             repository.set(ANOTHER_KEY, ANOTHER_VALUE)
 
             // When / Then
             assertThat(repository.delete(NON_EXISTING_KEY), equalTo(false))
 
             // Then
-            assertThat(repository.get(SAMPLE_VALUE), equalTo(SAMPLE_VALUE))
+            assertThat(repository.get(SAMPLE_KEY), equalTo(SAMPLE_VALUE))
             assertThat(repository.get(ANOTHER_KEY), equalTo(ANOTHER_VALUE))
             assertThat(repository.getCacheKeyCount(), equalTo(2))
         }
@@ -281,7 +281,7 @@ abstract class CacheRepositoryTestAcceptanceTest {
             assertThat(repository.get(SAMPLE_KEY), nullValue())
 
             // When / Then
-            repeat(5) { i -> assertThat(repository.increment(SAMPLE_KEY), equalTo(i + 1)) }
+            repeat(5) { i -> assertThat(repository.increment(SAMPLE_KEY), equalTo(i.toLong() + 1)) }
 
             // Then
             assertThat(repository.get(SAMPLE_KEY), equalTo("5"))
@@ -292,10 +292,10 @@ abstract class CacheRepositoryTestAcceptanceTest {
         fun `increment adds one unit to a key if already exists as a valid numeric String`() {
             // Given
             assertThat(repository.getCacheKeyCount(), equalTo(0))
-            repository.set(SAMPLE_VALUE, "-19")
+            repository.set(SAMPLE_KEY, "-19")
 
             // When / Then
-            assertThat(repository.increment(SAMPLE_VALUE), equalTo(-18))
+            assertThat(repository.increment(SAMPLE_KEY), equalTo(-18))
 
             // Then
             assertThat(repository.get(SAMPLE_KEY), equalTo("-18"))
@@ -309,7 +309,7 @@ abstract class CacheRepositoryTestAcceptanceTest {
             repository.set(SAMPLE_KEY, Long.MAX_VALUE.toString())
 
             // When / Then
-            val exception = assertThrows<OverflowException> { repository.increment(SAMPLE_VALUE) }
+            val exception = assertThrows<OverflowException> { repository.increment(SAMPLE_KEY) }
 
             // Then
             assertThat(
@@ -327,7 +327,7 @@ abstract class CacheRepositoryTestAcceptanceTest {
             repository.set(SAMPLE_KEY, "not-a-number")
 
             // When / Then
-            val exception = assertThrows<InvalidValueException> { repository.increment(SAMPLE_VALUE) }
+            val exception = assertThrows<InvalidValueException> { repository.increment(SAMPLE_KEY) }
 
             // Then
             assertThat(exception.message, equalTo("The value for key '$SAMPLE_KEY' is not a number"))
@@ -342,15 +342,13 @@ abstract class CacheRepositoryTestAcceptanceTest {
             repository.setRankedElement(SAMPLE_KEY, SMALL_RANK, FIRST_MEMBER)
 
             // When / Then
-            val exception = assertThrows<WrongTypeException> { repository.increment(SAMPLE_VALUE) }
+            val exception = assertThrows<WrongTypeException> { repository.increment(SAMPLE_KEY) }
 
             // Then
             assertThat(exception.message, equalTo("The value for key '$SAMPLE_KEY' is not a number"))
-            assertThat(repository.get(SAMPLE_KEY), equalTo("not-a-number"))
             assertThat(repository.getRankedElementCount(SAMPLE_KEY), equalTo(1))
         }
     }
-
 
     @Nested
     @DisplayName("Ranked Element operations")
@@ -466,12 +464,12 @@ abstract class CacheRepositoryTestAcceptanceTest {
         @ParameterizedTest
         @CsvSource(
             value = [
-                "0, 3, $FIRST_MEMBER, $SECOND_MEMBER, $THIRD_MEMBER",
-                "1, 2, $SECOND_MEMBER, $THIRD_MEMBER",
-                "1, 13, $SECOND_MEMBER, $THIRD_MEMBER, $FORTH_MEMBER",
-                "0, -1, $FIRST_MEMBER, $SECOND_MEMBER, $THIRD_MEMBER, $FORTH_MEMBER",
-                "-2, -1, $THIRD_MEMBER, $FORTH_MEMBER",
-                "0, -3, $FIRST_MEMBER, $SECOND_MEMBER",
+                "0, 3, $FIRST_MEMBER; $SECOND_MEMBER; $THIRD_MEMBER; $FORTH_MEMBER",
+                "1, 2, $SECOND_MEMBER; $THIRD_MEMBER",
+                "1, 13, $SECOND_MEMBER; $THIRD_MEMBER; $FORTH_MEMBER",
+                "0, -1, $FIRST_MEMBER; $SECOND_MEMBER; $THIRD_MEMBER; $FORTH_MEMBER",
+                "-2, -1, $THIRD_MEMBER; $FORTH_MEMBER",
+                "0, -3, $FIRST_MEMBER; $SECOND_MEMBER",
                 "3, 1, ''",
                 "0, -5, ''",
             ]
@@ -484,7 +482,7 @@ abstract class CacheRepositoryTestAcceptanceTest {
             repository.setRankedElement(RANKING_KEY, HIGHEST_RANK, FORTH_MEMBER)
 
             // When
-            val result = repository.getRankedElementRange(RANKING_KEY, start, stop).joinToString(separator = ", ")
+            val result = repository.getRankedElementRange(RANKING_KEY, start, stop).joinToString(separator = "; ")
 
             // Then
             assertThat(result, equalTo(expectedResult))
