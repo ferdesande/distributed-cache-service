@@ -13,3 +13,5 @@ spring:
           max-idle: 8
           min-idle: 0
           max-wait: -1ms
+cache:
+  implementation: inmemory

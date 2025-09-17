@@ -71,6 +71,8 @@ internal class Ranking {
 
     fun getMemberCount(): Long = memberToScore.count().toLong()
 
+    internal fun getMemberScore(member: String): Double? = memberToScore[member]
+
     private fun getSortedMembers(): List<String> {
         return scoreToMembers.values.map { it.sorted() }.flatten()
     }

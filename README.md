@@ -21,7 +21,7 @@ structure can be replaced by another solution.
    cd cache-service
    ```
 
-2. **Start local infrastructure**
+2. **Start local infrastructure ** (Only required to work with Redis implementation)
    ```bash
    cd infrastructure/local
    docker-compose up -d
@@ -101,14 +101,15 @@ curl http://localhost:8080/leaderboard/ranking/count
 - **Language**: Kotlin
 - **Framework**: Spring Boot 3
 - **Architecture**: Onion Architecture
-- **Cache**: Redis
+- **Cache**: Redis/In-Memory (Configurable)
 - **Testing**: JUnit 5, TestContainers
 - **Build**: Gradle
 - **Architecture Validation**: ArchUnit
 
 ## Local Development Infrastructure
 
-The directory `infrastructure/local` contains a Docker Compose configuration for local development.
+The directory `infrastructure/local` contains a Docker Compose configuration for local development when 
+the application is configured to work with Redis as foundation of the `CacheRepository`.
 
 ### Services
 
@@ -147,6 +148,12 @@ docker-compose down -v
 ## Application Configuration
 
 The application can be configured through `application.yaml`:
+To configure the cache implementation to use, set the cache implementation to one of the following options:
+
+```yaml
+cache:
+  implementation: inmemory  # Default: inmemory, Options: inmemory|redis
+```
 
 ## Building and Testing
 

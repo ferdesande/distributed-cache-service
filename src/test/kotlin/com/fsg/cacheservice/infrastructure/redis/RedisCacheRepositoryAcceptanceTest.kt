@@ -26,6 +26,7 @@ class RedisCacheRepositoryAcceptanceTest : CacheRepositoryTestAcceptanceTest() {
         @Suppress("Unused")
         fun configureProperties(registry: DynamicPropertyRegistry) {
             RedisTestUtils.configureRedisProperties(redisContainer, registry)
+            registry.add("cache.implementation") { "redis" }
         }
 
         @JvmStatic
@@ -50,7 +51,8 @@ class RedisCacheRepositoryAcceptanceTest : CacheRepositoryTestAcceptanceTest() {
     private lateinit var redisTemplate: RedisTemplate<String, String>
 
     @Autowired
-    private lateinit var repository: RedisCacheRepository
+    private lateinit var repository: CacheRepository
 
-    override fun setCacheRepository(): CacheRepository = repository
+    // HINT: Cast the object under test
+    override fun setCacheRepository(): CacheRepository = repository as RedisCacheRepository
 }

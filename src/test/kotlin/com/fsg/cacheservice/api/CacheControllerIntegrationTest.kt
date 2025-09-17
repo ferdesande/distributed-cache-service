@@ -20,21 +20,26 @@ import io.restassured.module.kotlin.extensions.Then
 import io.restassured.module.kotlin.extensions.When
 import io.restassured.response.ValidatableResponse
 import org.apache.http.HttpStatus
+import org.apache.http.HttpStatus.SC_BAD_REQUEST
+import org.apache.http.HttpStatus.SC_NOT_FOUND
 import org.hamcrest.MatcherAssert.assertThat
 import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.greaterThan
 import org.hamcrest.Matchers.nullValue
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.CsvSource
+import org.mockito.Mockito
 import org.mockito.kotlin.whenever
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.http.MediaType
-import org.springframework.test.context.bean.override.mockito.MockitoBean
+import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
+import org.springframework.test.context.bean.override.mockito.MockitoSpyBean
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 abstract class CacheControllerIntegrationTest {
@@ -54,12 +59,18 @@ abstract class CacheControllerIntegrationTest {
     @LocalServerPort
     private var port: Int = 0
 
-    @MockitoBean
+    //    @MockitoBean
+    @MockitoSpyBean
     private lateinit var valueGenerator: ValueGenerator
 
     @BeforeEach
     fun setUp() {
         RestAssured.port = port
+    }
+
+    @AfterEach
+    fun resetMocks() {
+        Mockito.reset(valueGenerator)
     }
 
     protected abstract fun setString(key: String, value: String, ttlInSeconds: Long? = null)
@@ -96,10 +107,12 @@ abstract class CacheControllerIntegrationTest {
             } When {
                 get(KEY_VALUE_PATH)
             } Then {
-                expectBadRequestResponse(
-                    message = "The value for key '$SAMPLE_KEY' is not a String",
-                    path = "/$SAMPLE_KEY"
-                )
+                // HINT: ignores timestamp because of the value generator spy
+                statusCode(SC_BAD_REQUEST)
+                    .contentType(APPLICATION_JSON_VALUE)
+                    .body("error.code", equalTo("BAD_REQUEST"))
+                    .body("error.message", equalTo("The value for key '$SAMPLE_KEY' is not a String"))
+                    .body("error.path", equalTo("/$SAMPLE_KEY"))
             }
         }
 
@@ -113,7 +126,12 @@ abstract class CacheControllerIntegrationTest {
             } When {
                 get(KEY_VALUE_PATH)
             } Then {
-                expectKeyNotFound("/$SAMPLE_KEY")
+                // HINT: ignores timestamp because of the value generator spy
+                statusCode(SC_NOT_FOUND)
+                    .contentType(APPLICATION_JSON_VALUE)
+                    .body("error.code", equalTo("NOT_FOUND"))
+                    .body("error.message", equalTo("Key $SAMPLE_KEY not found"))
+                    .body("error.path", equalTo("/$SAMPLE_KEY"))
             }
         }
 
@@ -415,10 +433,12 @@ abstract class CacheControllerIntegrationTest {
             } When {
                 post(RANKING_BASE_PATH)
             } Then {
-                expectBadRequestResponse(
-                    message = "The value for key '$SAMPLE_KEY' is not a Ranking",
-                    path = "/$SAMPLE_KEY/ranking",
-                )
+                // HINT: ignores timestamp because of the value generator spy
+                statusCode(SC_BAD_REQUEST)
+                    .contentType(APPLICATION_JSON_VALUE)
+                    .body("error.code", equalTo("BAD_REQUEST"))
+                    .body("error.message", equalTo("The value for key '$SAMPLE_KEY' is not a Ranking"))
+                    .body("error.path", equalTo("/$SAMPLE_KEY/ranking"))
             }
         }
     }
@@ -548,6 +568,7 @@ abstract class CacheControllerIntegrationTest {
 
         @Test
         fun `returns 400 when request for a range in a string key`() {
+            configureErrorTimestamp()
             setString(SAMPLE_KEY, SAMPLE_VALUE)
 
             Given {
@@ -664,7 +685,7 @@ abstract class CacheControllerIntegrationTest {
             setString("another-key", ANOTHER_VALUE)
             setRankingMember("ranking-key", SAMPLE_RANKING_MEMBER, LOW_SCORE)
 
-            Thread.sleep(SHORT_DELAY_IN_MILLIS)
+            Thread.sleep(SHORT_DELAY_IN_MILLIS * 3)
 
             When {
                 get(KEY_COUNT_PATH)

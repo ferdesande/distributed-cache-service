@@ -9,10 +9,8 @@ import com.fsg.cacheservice.core.exception.WrongTypeException
 import io.lettuce.core.RedisCommandExecutionException
 import org.springframework.data.redis.RedisSystemException
 import org.springframework.data.redis.core.RedisTemplate
-import org.springframework.stereotype.Repository
 import java.time.Duration
 
-@Repository
 class RedisCacheRepository(
     private val redisTemplate: RedisTemplate<String, String>
 ) : CacheRepository {

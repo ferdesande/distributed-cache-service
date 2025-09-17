@@ -9,6 +9,7 @@ import com.fsg.cacheservice.core.exception.WrongTypeException
 import com.fsg.cacheservice.infrastructure.inmemory.model.CacheEntry
 import com.fsg.cacheservice.infrastructure.inmemory.model.Ranking
 import java.time.Duration
+import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.locks.ReentrantReadWriteLock
 
@@ -17,7 +18,7 @@ class InMemoryCacheRepository(
     private val valueGenerator: ValueGenerator
 ) : CacheRepository {
     private val inMemoryCache = ConcurrentHashMap<String, CacheEntry<Any>>()
-    private val incrementLock = ReentrantReadWriteLock()
+    private val lock = ReentrantReadWriteLock()
 
     override fun set(key: String, value: String, expiration: Duration?) {
         val expirationInstant = expiration?.let {
@@ -40,17 +41,17 @@ class InMemoryCacheRepository(
     }
 
     override fun getCacheKeyCount(): Int {
-        incrementLock.writeLock().lock()
+        lock.writeLock().lock()
         try {
             cleanExpiredKeys()
             return inMemoryCache.size
         } finally {
-            incrementLock.writeLock().unlock()
+            lock.writeLock().unlock()
         }
     }
 
     override fun increment(key: String): Long {
-        incrementLock.writeLock().lock()
+        lock.writeLock().lock()
         try {
             checkExpired(key)
             val value = when (val value = inMemoryCache[key]?.value) {
@@ -62,7 +63,7 @@ class InMemoryCacheRepository(
             inMemoryCache[key] = CacheEntry((longValue).toString())
             return longValue
         } finally {
-            incrementLock.writeLock().unlock()
+            lock.writeLock().unlock()
         }
     }
 
@@ -85,6 +86,18 @@ class InMemoryCacheRepository(
         start: Long,
         stop: Long
     ): List<String> = getRanking(key)?.getMemberRange(start, stop) ?: emptyList()
+
+    // HINT: methods for testing
+    internal fun clear() {
+        inMemoryCache.clear()
+    }
+
+    internal fun getExpire(key: String): Long =
+        inMemoryCache[key]?.expiresAt?.let { it.toEpochMilli() - Instant.now().toEpochMilli() } ?: -1
+
+    internal fun getRankingScore(key: String, member: String): Double? {
+        return getRanking(key)?.getMemberScore(member)
+    }
 
     private fun getRanking(key: String): Ranking? {
         return when (val ranking = inMemoryCache[key]?.value) {

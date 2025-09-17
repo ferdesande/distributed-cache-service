@@ -25,6 +25,7 @@ class RedisCacheControllerAcceptanceTest : CacheControllerIntegrationTest() {
         @Suppress("Unused")
         fun configureProperties(registry: DynamicPropertyRegistry) {
             RedisTestUtils.configureRedisProperties(redisContainer, registry)
+            registry.add("cache.implementation") { "redis" }
         }
 
         @JvmStatic
