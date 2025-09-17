@@ -124,7 +124,7 @@ class CacheControllerErrorHandlingAndValidationTest {
         }
 
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.set(SAMPLE_KEY, SAMPLE_VALUE)).thenThrow(ANY_CACHE_EXCEPTION)
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -154,7 +154,7 @@ class CacheControllerErrorHandlingAndValidationTest {
         }
 
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.delete(SAMPLE_KEY)).thenThrow(ANY_CACHE_EXCEPTION)
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -181,7 +181,7 @@ class CacheControllerErrorHandlingAndValidationTest {
         }
 
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.increment(SAMPLE_KEY)).thenThrow(ANY_CACHE_EXCEPTION)
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -243,7 +243,7 @@ class CacheControllerErrorHandlingAndValidationTest {
         }
 
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.setRankedElement(eq(SAMPLE_KEY), anyDouble(), anyString()))
                 .thenThrow(ANY_CACHE_EXCEPTION)
             Given {
@@ -288,7 +288,7 @@ class CacheControllerErrorHandlingAndValidationTest {
         }
 
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.getRankedElementPosition(SAMPLE_KEY, SAMPLE_RANKING_MEMBER))
                 .thenThrow(ANY_CACHE_EXCEPTION)
             Given {
@@ -309,9 +309,6 @@ class CacheControllerErrorHandlingAndValidationTest {
         @ParameterizedTest
         @CsvSource(
             value = [
-                "-1, 0, Validation failed: start must be greater than or equal to 0",
-                "1, -1, Validation failed: stop must be greater than or equal to 0",
-                "3, 1, Start must be smaller than or equal to stop",
                 "non_numeric, 1, Invalid value 'non_numeric' for parameter 'start'. Expected type: Integer",
                 "1, non_numeric, Invalid value 'non_numeric' for parameter 'stop'. Expected type: Integer",
                 "null, 1, Validation failed: start cannot be null",
@@ -335,7 +332,7 @@ class CacheControllerErrorHandlingAndValidationTest {
         }
 
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.getRankedElementRange(SAMPLE_KEY, 0, 0))
                 .thenThrow(ANY_CACHE_EXCEPTION)
             Given {
@@ -365,7 +362,7 @@ class CacheControllerErrorHandlingAndValidationTest {
         }
 
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.getRankedElementCount(SAMPLE_KEY)).thenThrow(ANY_CACHE_EXCEPTION)
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -381,7 +378,7 @@ class CacheControllerErrorHandlingAndValidationTest {
     @DisplayName("[GET] /keys/count")
     inner class GetKeyCountOperations {
         @Test
-        fun `returns 500 when Redis is unavailable`() {
+        fun `returns 500 when server throws an unexpected error`() {
             whenever(cacheRepository.getCacheKeyCount()).thenThrow(ANY_CACHE_EXCEPTION)
             When {
                 get(KEY_COUNT_PATH)

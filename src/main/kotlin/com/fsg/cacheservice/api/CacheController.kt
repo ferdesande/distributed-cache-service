@@ -5,7 +5,6 @@ import com.fsg.cacheservice.api.validation.ValidKey
 import com.fsg.cacheservice.api.validation.ValidRankingMember
 import com.fsg.cacheservice.core.CacheRepository
 import com.fsg.cacheservice.core.exception.BadRequestException
-import com.fsg.cacheservice.core.exception.CacheException
 import com.fsg.cacheservice.core.exception.NotFoundException
 import jakarta.validation.Valid
 import jakarta.validation.constraints.Min
@@ -69,9 +68,7 @@ class CacheController(
     @PutMapping("/{key}/increment", produces = [MediaType.TEXT_PLAIN_VALUE])
     fun incrementCounter(
         @ValidKey @PathVariable key: String
-    ): String {
-        return cacheRepository.increment(key)?.toString() ?: throw CacheException("Unexpected error")
-    }
+    ): String = cacheRepository.increment(key).toString()
 
     @PostMapping(
         "/{key}/ranking",
@@ -82,11 +79,12 @@ class CacheController(
         @ValidKey @PathVariable key: String,
         @Valid @RequestBody dto: RankingMemberDto
     ): ResponseEntity<String> {
-        return when (cacheRepository.setRankedElement(key, dto.score, dto.member)) {
-            null -> throw CacheException("Unexpected error")
-            true -> ResponseEntity.status(HttpStatus.CREATED.value()).body("OK")
-            false -> ResponseEntity.ok("OK")
+        val httpStatus = when (cacheRepository.setRankedElement(key, dto.score, dto.member)) {
+            true -> HttpStatus.CREATED
+            false -> HttpStatus.OK
         }
+
+        return ResponseEntity.status(httpStatus.value()).body("OK")
     }
 
     @GetMapping("/{key}/ranking/{member}/rank", produces = [MediaType.TEXT_PLAIN_VALUE])
@@ -94,8 +92,9 @@ class CacheController(
         @ValidKey @PathVariable key: String,
         @ValidRankingMember @PathVariable member: String
     ): String {
+        // HINT: Be careful. This method could fail in a high concurrency environment.
         return cacheRepository.getRankedElementPosition(key, member)?.toString()
-            ?: if ((cacheRepository.getRankedElementCount(key) ?: 0L) == 0L) {
+            ?: if (cacheRepository.getRankedElementCount(key) == 0L) {
                 throw NotFoundException("Key $key not found")
             } else {
                 throw NotFoundException("Member $member not found in ranking")
@@ -105,20 +104,10 @@ class CacheController(
     @GetMapping("/{key}/ranking/range", produces = [MediaType.APPLICATION_JSON_VALUE])
     fun getRankingRange(
         @ValidKey @PathVariable key: String,
-        @RequestParam
-        @NotNull(message = "start cannot be null")
-        @Min(value = 0, message = "start must be greater than or equal to 0")
-        start: Int?,
-        @RequestParam
-        @NotNull(message = "stop cannot be null")
-        @Min(value = 0, message = "stop must be greater than or equal to 0")
-        stop: Int?
+        @RequestParam @NotNull(message = "start cannot be null") start: Int?,
+        @RequestParam @NotNull(message = "stop cannot be null") stop: Int?
     ): List<String> {
-        if (start!! > stop!!) {
-            throw BadRequestException("Start must be smaller than or equal to stop")
-        }
-
-        if (stop - start >= MAX_RANGE_PAGE_SIZE) {
+        if (stop!! - start!! >= MAX_RANGE_PAGE_SIZE) {
             throw BadRequestException("Range too largo. Maximum $MAX_RANGE_PAGE_SIZE elements allowed")
         }
 
@@ -128,12 +117,8 @@ class CacheController(
     @GetMapping("/{key}/ranking/count", produces = [MediaType.TEXT_PLAIN_VALUE])
     fun getRankingCount(
         @ValidKey @PathVariable key: String
-    ): String {
-        return cacheRepository.getRankedElementCount(key)?.toString() ?: throw CacheException("Unexpected error")
-    }
+    ): String = cacheRepository.getRankedElementCount(key).toString()
 
     @GetMapping("/keys/count", produces = [MediaType.TEXT_PLAIN_VALUE])
-    fun getKeyCount(): String {
-        return cacheRepository.getCacheKeyCount().toString()
-    }
+    fun getKeyCount(): String = cacheRepository.getCacheKeyCount().toString()
 }

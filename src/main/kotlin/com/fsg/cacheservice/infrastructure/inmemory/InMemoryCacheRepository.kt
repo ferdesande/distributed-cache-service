@@ -40,8 +40,13 @@ class InMemoryCacheRepository(
     }
 
     override fun getCacheKeyCount(): Int {
-        cleanExpiredKeys()
-        return inMemoryCache.size
+        incrementLock.writeLock().lock()
+        try {
+            cleanExpiredKeys()
+            return inMemoryCache.size
+        } finally {
+            incrementLock.writeLock().unlock()
+        }
     }
 
     override fun increment(key: String): Long {
@@ -61,7 +66,7 @@ class InMemoryCacheRepository(
         }
     }
 
-    override fun setRankedElement(key: String, score: Double, member: String): Boolean? =
+    override fun setRankedElement(key: String, score: Double, member: String): Boolean =
         (getRanking(key) ?: this.run {
             val newRanking = Ranking()
             inMemoryCache[key] = CacheEntry(newRanking)

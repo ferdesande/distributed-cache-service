@@ -12,8 +12,8 @@ import com.fsg.cacheservice.api.helper.DataMother.SAMPLE_VALUE
 import com.fsg.cacheservice.api.helper.DataMother.TIMESTAMP
 import com.fsg.cacheservice.api.helper.ValidatableResponseHelper.expectBadRequestResponse
 import com.fsg.cacheservice.api.helper.ValidatableResponseHelper.expectErrorResponse
+import com.fsg.cacheservice.api.helper.ValidatableResponseHelper.expectInternalServerErrorResponse
 import com.fsg.cacheservice.core.ValueGenerator
-import com.fsg.cacheservice.testcontainers.RedisTestBase
 import io.restassured.RestAssured
 import io.restassured.module.kotlin.extensions.Given
 import io.restassured.module.kotlin.extensions.Then
@@ -25,7 +25,6 @@ import org.hamcrest.Matchers.equalTo
 import org.hamcrest.Matchers.greaterThan
 import org.hamcrest.Matchers.nullValue
 import org.junit.jupiter.api.BeforeEach
-import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Nested
 import org.junit.jupiter.api.Test
@@ -36,10 +35,9 @@ import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.test.web.server.LocalServerPort
 import org.springframework.http.MediaType
 import org.springframework.test.context.bean.override.mockito.MockitoBean
-import java.time.Duration
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-class CacheControllerIntegrationTest : RedisTestBase() {
+abstract class CacheControllerIntegrationTest {
 
     companion object {
         private const val KEY_PATH_PARAMETER = "key"
@@ -64,13 +62,19 @@ class CacheControllerIntegrationTest : RedisTestBase() {
         RestAssured.port = port
     }
 
+    protected abstract fun setString(key: String, value: String, ttlInSeconds: Long? = null)
+    protected abstract fun getString(key: String): String?
+    protected abstract fun getExpire(key: String): Long
+    protected abstract fun getRankingScore(key: String, member: String): Double?
+    protected abstract fun setRankingMember(key: String, member: String, score: Double): Boolean?
+
     @Nested
     @DisplayName("[GET] /{key}]")
     inner class GetKeyOperations {
 
         @Test
         fun `returns 200 and the value when key exist in cache`() {
-            redisTemplate.opsForValue().set(SAMPLE_KEY, SAMPLE_VALUE)
+            setString(SAMPLE_KEY, SAMPLE_VALUE)
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -84,9 +88,39 @@ class CacheControllerIntegrationTest : RedisTestBase() {
         }
 
         @Test
+        fun `returns 400 when key is assigned to ranking`() {
+            setRankingMember(SAMPLE_KEY, SAMPLE_VALUE, LOW_SCORE)
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                get(KEY_VALUE_PATH)
+            } Then {
+                expectBadRequestResponse(
+                    message = "The value for key '$SAMPLE_KEY' is not a String",
+                    path = "/$SAMPLE_KEY"
+                )
+            }
+        }
+
+        @Test
+        fun `returns 404 if TTL has expired`() {
+            setString(SAMPLE_KEY, SAMPLE_VALUE, SHORT_TTL.toLong())
+            Thread.sleep(SHORT_DELAY_IN_MILLIS)
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                get(KEY_VALUE_PATH)
+            } Then {
+                expectKeyNotFound("/$SAMPLE_KEY")
+            }
+        }
+
+        @Test
         fun `returns 404 when key does not exist in cache`() {
             configureErrorTimestamp()
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+            assertThat(getString(SAMPLE_KEY), nullValue())
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -116,16 +150,16 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body(equalTo("OK"))
             }
 
-            val storedValue = redisTemplate.opsForValue().get(SAMPLE_KEY)
+            val storedValue = getString(SAMPLE_KEY)
             assertThat(storedValue, equalTo(SAMPLE_VALUE))
 
             // -1 means no expiration
-            assertThat(redisTemplate.getExpire(SAMPLE_KEY), equalTo(-1L))
+            assertThat(getExpire(SAMPLE_KEY), equalTo(-1L))
         }
 
         @Test
         fun `returns 200 when setting overrides and existing`() {
-            redisTemplate.opsForValue().set(SAMPLE_VALUE, SAMPLE_VALUE)
+            setString(SAMPLE_VALUE, SAMPLE_VALUE)
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
                 contentType(MediaType.TEXT_PLAIN_VALUE)
@@ -138,11 +172,11 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body(equalTo("OK"))
             }
 
-            val storedValue = redisTemplate.opsForValue().get(SAMPLE_KEY)
+            val storedValue = getString(SAMPLE_KEY)
             assertThat(storedValue, equalTo(ANOTHER_VALUE))
 
             // -1 means no expiration
-            assertThat(redisTemplate.getExpire(SAMPLE_KEY), equalTo(-1L))
+            assertThat(getExpire(SAMPLE_KEY), equalTo(-1L))
         }
 
         @Test
@@ -161,16 +195,15 @@ class CacheControllerIntegrationTest : RedisTestBase() {
             }
 
             // Verify value was stored and expires after TTL
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), equalTo(SAMPLE_VALUE))
+            assertThat(getString(SAMPLE_KEY), equalTo(SAMPLE_VALUE))
             Thread.sleep(SHORT_DELAY_IN_MILLIS)
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+            assertThat(getString(SAMPLE_KEY), nullValue())
         }
 
         @Test
         fun `returns 200 and removes TTL when setting overrides value without TTL`() {
-            redisTemplate.opsForValue()
-                .set(SAMPLE_KEY, SAMPLE_VALUE, Duration.ofMinutes(DEFAULT_TTL.toLong()))
-            assertThat(redisTemplate.getExpire(SAMPLE_KEY), greaterThan(0L))
+            setString(SAMPLE_KEY, SAMPLE_VALUE, DEFAULT_TTL.toLong())
+            assertThat(getExpire(SAMPLE_KEY), greaterThan(0L))
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -185,7 +218,7 @@ class CacheControllerIntegrationTest : RedisTestBase() {
             }
 
             // -1 means no expiration
-            assertThat(redisTemplate.getExpire(SAMPLE_KEY), equalTo(-1L))
+            assertThat(getExpire(SAMPLE_KEY), equalTo(-1L))
         }
     }
 
@@ -195,7 +228,7 @@ class CacheControllerIntegrationTest : RedisTestBase() {
 
         @Test
         fun `returns 200 when deleting existing key`() {
-            redisTemplate.opsForValue().set(SAMPLE_KEY, SAMPLE_VALUE)
+            setString(SAMPLE_KEY, SAMPLE_VALUE)
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -207,13 +240,13 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body(equalTo("OK"))
             }
 
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+            assertThat(getString(SAMPLE_KEY), nullValue())
         }
 
         @Test
         fun `returns 404 when deleting non-existing key`() {
             configureErrorTimestamp()
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+            assertThat(getString(SAMPLE_KEY), nullValue())
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -241,12 +274,12 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body(equalTo("1"))
             }
 
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), equalTo("1"))
+            assertThat(getString(SAMPLE_KEY), equalTo("1"))
         }
 
         @Test
         fun `returns 200 with incremented value when key exists with numeric value`() {
-            redisTemplate.opsForValue().set(SAMPLE_KEY, "5")
+            setString(SAMPLE_KEY, "5")
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -258,14 +291,13 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body(equalTo("6"))
             }
 
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), equalTo("6"))
+            assertThat(getString(SAMPLE_KEY), equalTo("6"))
         }
 
         @Test
-        @Disabled("It will be fixed in a further story")
-        fun `returns 400 when key exists with non-numeric value`() {
+        fun `returns 400 when key is a non-numeric value`() {
             configureErrorTimestamp()
-            redisTemplate.opsForValue().set(SAMPLE_KEY, "not-a-number")
+            setString(SAMPLE_KEY, "not-a-number")
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -273,7 +305,57 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 put("$KEY_VALUE_PATH/increment")
             } Then {
                 expectBadRequestResponse(
-                    message = "Key cannot be increased, contains non integer or out of range value",
+                    message = "The value for key '$SAMPLE_KEY' is not a number",
+                    path = "/$SAMPLE_KEY/increment",
+                )
+            }
+        }
+
+        @Test
+        fun `returns 400 when key is a ranking`() {
+            configureErrorTimestamp()
+            setRankingMember(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                put("$KEY_VALUE_PATH/increment")
+            } Then {
+                expectBadRequestResponse(
+                    message = "The value for key '$SAMPLE_KEY' is not a number",
+                    path = "/$SAMPLE_KEY/increment",
+                )
+            }
+        }
+
+        @Test
+        fun `returns 200 when increment is executed close to an overflow`() {
+            configureErrorTimestamp()
+            setString(SAMPLE_KEY, (Long.MAX_VALUE - 1).toString())
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                put("$KEY_VALUE_PATH/increment")
+            } Then {
+                statusCode(HttpStatus.SC_OK)
+                contentType(MediaType.TEXT_PLAIN_VALUE)
+                body(equalTo(Long.MAX_VALUE.toString()))
+            }
+        }
+
+        @Test
+        fun `returns 500 when increment produces an overflow`() {
+            configureErrorTimestamp()
+            setString(SAMPLE_KEY, Long.MAX_VALUE.toString())
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+            } When {
+                put("$KEY_VALUE_PATH/increment")
+            } Then {
+                expectInternalServerErrorResponse(
+                    message = "Increment for key '$SAMPLE_KEY' cannot be done because result overflows 64-bits value",
                     path = "/$SAMPLE_KEY/increment",
                 )
             }
@@ -298,13 +380,13 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body(equalTo("OK"))
             }
 
-            val score = redisTemplate.opsForZSet().score(SAMPLE_KEY, SAMPLE_RANKING_MEMBER)
+            val score = getRankingScore(SAMPLE_KEY, SAMPLE_RANKING_MEMBER)
             assertThat(score, equalTo(LOW_SCORE))
         }
 
         @Test
         fun `returns 200 when updating existing member in ranking`() {
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
+            setRankingMember(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -318,8 +400,26 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body(equalTo("OK"))
             }
 
-            val score = redisTemplate.opsForZSet().score(SAMPLE_KEY, SAMPLE_RANKING_MEMBER)
+            val score = getRankingScore(SAMPLE_KEY, SAMPLE_RANKING_MEMBER)
             assertThat(score, equalTo(MEDIUM_SCORE))
+        }
+
+        @Test
+        fun `returns 400 when setting a ranking member in a string key`() {
+            setString(SAMPLE_KEY, SAMPLE_VALUE)
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+                contentType(MediaType.APPLICATION_JSON_VALUE)
+                body(RankingMemberDto(SAMPLE_RANKING_MEMBER, MEDIUM_SCORE))
+            } When {
+                post(RANKING_BASE_PATH)
+            } Then {
+                expectBadRequestResponse(
+                    message = "The value for key '$SAMPLE_KEY' is not a Ranking",
+                    path = "/$SAMPLE_KEY/ranking",
+                )
+            }
         }
     }
 
@@ -338,9 +438,9 @@ class CacheControllerIntegrationTest : RedisTestBase() {
             ]
         )
         fun `returns 200 with rank 0-based rank when get rank for member`(member: String, rank: String) {
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, ANOTHER_RANKING_MEMBER, MEDIUM_SCORE)
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, "player3", HIGH_SCORE)
+            setRankingMember(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
+            setRankingMember(SAMPLE_KEY, ANOTHER_RANKING_MEMBER, MEDIUM_SCORE)
+            setRankingMember(SAMPLE_KEY, "player3", HIGH_SCORE)
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -357,7 +457,7 @@ class CacheControllerIntegrationTest : RedisTestBase() {
         @Test
         fun `returns 404 when member does not exist in ranking`() {
             configureErrorTimestamp()
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, 100.0)
+            setRankingMember(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, 100.0)
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -377,7 +477,7 @@ class CacheControllerIntegrationTest : RedisTestBase() {
         @Test
         fun `returns 404 when ranking key does not exist`() {
             configureErrorTimestamp()
-            assertThat(redisTemplate.opsForValue().get(SAMPLE_KEY), nullValue())
+            assertThat(getString(SAMPLE_KEY), nullValue())
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -401,16 +501,20 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 "1, 2, player2:player3",
                 "2, 2, player3",
                 "0, 7, player1:player2:player3:player4",
+                "0, -2, player1:player2:player3",
+                "-2, -1, player3:player4",
                 "0, 1, player1:player2",
+                "-1, -2, null",
+                "3, 2, null",
                 "6, 7, null"
             ], nullValues = ["null"]
         )
         fun `returns 200 and the requested members`(start: Int, stop: Int, members: String?) {
             // easier to read when values instead of with constants
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, "player1", LOW_SCORE)
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, "player2", MEDIUM_SCORE)
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, "player3", HIGH_SCORE)
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, "player4", HIGH_SCORE + 1000)
+            setRankingMember(SAMPLE_KEY, "player1", LOW_SCORE)
+            setRankingMember(SAMPLE_KEY, "player2", MEDIUM_SCORE)
+            setRankingMember(SAMPLE_KEY, "player3", HIGH_SCORE)
+            setRankingMember(SAMPLE_KEY, "player4", HIGH_SCORE + 1000)
 
             val expectedMembers = members?.split(":") ?: emptyList()
 
@@ -441,6 +545,24 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 body("", equalTo(emptyList<String>()))
             }
         }
+
+        @Test
+        fun `returns 400 when request for a range in a string key`() {
+            setString(SAMPLE_KEY, SAMPLE_VALUE)
+
+            Given {
+                pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
+                queryParam("start", 0)
+                queryParam("stop", 5)
+            } When {
+                get("$RANKING_BASE_PATH/range")
+            } Then {
+                expectBadRequestResponse(
+                    message = "The value for key '$SAMPLE_KEY' is not a Ranking",
+                    path = "/$SAMPLE_KEY/ranking/range"
+                )
+            }
+        }
     }
 
     @Nested
@@ -462,7 +584,7 @@ class CacheControllerIntegrationTest : RedisTestBase() {
 
         @Test
         fun `returns 200 with 1 when ranking has single member`() {
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
+            setRankingMember(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -477,9 +599,9 @@ class CacheControllerIntegrationTest : RedisTestBase() {
 
         @Test
         fun `returns 200 with correct count when ranking has multiple members`() {
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, ANOTHER_RANKING_MEMBER, MEDIUM_SCORE)
-            redisTemplate.opsForZSet().add(SAMPLE_KEY, "player3", HIGH_SCORE)
+            setRankingMember(SAMPLE_KEY, SAMPLE_RANKING_MEMBER, LOW_SCORE)
+            setRankingMember(SAMPLE_KEY, ANOTHER_RANKING_MEMBER, MEDIUM_SCORE)
+            setRankingMember(SAMPLE_KEY, "player3", HIGH_SCORE)
 
             Given {
                 pathParam(KEY_PATH_PARAMETER, SAMPLE_KEY)
@@ -510,7 +632,7 @@ class CacheControllerIntegrationTest : RedisTestBase() {
 
         @Test
         fun `returns 200 with 1 when cache has single key`() {
-            redisTemplate.opsForValue().set(SAMPLE_KEY, SAMPLE_VALUE)
+            setString(SAMPLE_KEY, SAMPLE_VALUE)
 
             When {
                 get(KEY_COUNT_PATH)
@@ -523,9 +645,9 @@ class CacheControllerIntegrationTest : RedisTestBase() {
 
         @Test
         fun `returns 200 with correct count when cache has multiple keys`() {
-            redisTemplate.opsForValue().set(SAMPLE_KEY, SAMPLE_VALUE)
-            redisTemplate.opsForValue().set("another-key", ANOTHER_VALUE)
-            redisTemplate.opsForZSet().add("ranking-key", SAMPLE_RANKING_MEMBER, LOW_SCORE)
+            setString(SAMPLE_KEY, SAMPLE_VALUE)
+            setString("another-key", ANOTHER_VALUE)
+            setRankingMember("ranking-key", SAMPLE_RANKING_MEMBER, LOW_SCORE)
 
             When {
                 get(KEY_COUNT_PATH)
@@ -533,6 +655,23 @@ class CacheControllerIntegrationTest : RedisTestBase() {
                 statusCode(HttpStatus.SC_OK)
                 contentType(MediaType.TEXT_PLAIN_VALUE)
                 body(equalTo("3"))
+            }
+        }
+
+        @Test
+        fun `returns 200 with correct count when key ttl has expired`() {
+            setString(SAMPLE_KEY, SAMPLE_VALUE, SHORT_TTL.toLong())
+            setString("another-key", ANOTHER_VALUE)
+            setRankingMember("ranking-key", SAMPLE_RANKING_MEMBER, LOW_SCORE)
+
+            Thread.sleep(SHORT_DELAY_IN_MILLIS)
+
+            When {
+                get(KEY_COUNT_PATH)
+            } Then {
+                statusCode(HttpStatus.SC_OK)
+                contentType(MediaType.TEXT_PLAIN_VALUE)
+                body(equalTo("2"))
             }
         }
     }

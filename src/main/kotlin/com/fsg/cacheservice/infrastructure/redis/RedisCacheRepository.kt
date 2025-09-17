@@ -73,8 +73,7 @@ class RedisCacheRepository(
                                 "Increment for key '$key' cannot be done because result overflows 64-bits value"
                             )
 
-                        else ->
-                            CacheException("Unexpected exception occurred while incrementing $key", ex.cause)
+                        else -> CacheException("Unexpected exception occurred while incrementing $key", ex.cause)
                     }
                 }
 
@@ -107,7 +106,7 @@ class RedisCacheRepository(
     ): List<String> =
         try {
             redisTemplate.opsForZSet().range(key, start, stop)?.toList() ?: emptyList()
-        }catch (ex: RedisSystemException){
+        } catch (ex: RedisSystemException) {
             throw when {
                 ex.cause is RedisCommandExecutionException && ex.cause!!.message?.contains("WRONGTYPE") == true ->
                     WrongTypeException("The value for key '$key' is not a Ranking")

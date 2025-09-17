@@ -1,4 +1,4 @@
-# Story 014: Configure Cache Implementation By Using Different Profiles for Every Implementation
+# Story 014: Configure Cache Implementation By Using Different Profiles for Each Implementation
 
 ## User Story
 As a developer, I want to configure which cache implementation to use via Spring configuration properties

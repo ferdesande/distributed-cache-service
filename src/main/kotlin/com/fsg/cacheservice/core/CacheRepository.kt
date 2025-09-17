@@ -21,7 +21,7 @@ interface CacheRepository {
     //       being 0-based rank with 0 as the smallest rank
 
     // HINT: Returns true if member was added, false if it was just updated
-    fun setRankedElement(key: String, score: Double, member: String): Boolean?
+    fun setRankedElement(key: String, score: Double, member: String): Boolean
 
     fun getRankedElementCount(key: String): Long
 

@@ -5,8 +5,10 @@ import com.fsg.cacheservice.api.dto.ErrorResponseDto
 import com.fsg.cacheservice.core.ValueGenerator
 import com.fsg.cacheservice.core.exception.BadRequestException
 import com.fsg.cacheservice.core.exception.CacheException
-import com.fsg.cacheservice.core.exception.InvalidIncrementValueException
+import com.fsg.cacheservice.core.exception.InvalidValueException
 import com.fsg.cacheservice.core.exception.NotFoundException
+import com.fsg.cacheservice.core.exception.OverflowException
+import com.fsg.cacheservice.core.exception.WrongTypeException
 import jakarta.validation.ConstraintViolationException
 import org.springframework.http.HttpStatus
 import org.springframework.http.converter.HttpMessageNotReadableException
@@ -47,15 +49,32 @@ class GlobalExceptionHandler(
         )
     }
 
-    @ExceptionHandler(InvalidIncrementValueException::class)
+    @ExceptionHandler(InvalidValueException::class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    fun handleInvalidIncrementValueException(
-        ex: InvalidIncrementValueException,
-        request: WebRequest
-    ): ErrorResponseDto {
+    fun handleInvalidValueException(ex: InvalidValueException, request: WebRequest): ErrorResponseDto {
         return createErrorResponse(
             code = "BAD_REQUEST",
-            message = ex.message ?: "Failed trying to increment a non-numeric value",
+            message = ex.message ?: "Invalid request",
+            path = getRequestPath(request)
+        )
+    }
+
+    @ExceptionHandler(WrongTypeException::class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    fun handleWrongTypeException(ex: WrongTypeException, request: WebRequest): ErrorResponseDto {
+        return createErrorResponse(
+            code = "BAD_REQUEST",
+            message = ex.message ?: "Invalid request",
+            path = getRequestPath(request)
+        )
+    }
+
+    @ExceptionHandler(OverflowException::class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    fun handleOverflowException(ex: OverflowException, request: WebRequest): ErrorResponseDto {
+        return createErrorResponse(
+            code = "INTERNAL_SERVER_ERROR",
+            message = ex.message ?: "Problem accessing cache",
             path = getRequestPath(request)
         )
     }
